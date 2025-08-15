@@ -4,7 +4,7 @@ const __firebase_config = '\n{\n  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtb
 
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, collection, query, orderBy, limit } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, collection, query, orderBy, limit, getDocs, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 
 // --- Helper function to get App ID ---
@@ -79,10 +79,40 @@ const useIdleTimer = (onIdle, timeout = 10000) => {
 
 
 // --- Login Screen Component ---
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ onLogin, onClearData }) => {
     const [username, setUsername] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const [showResetPrompt, setShowResetPrompt] = useState(false);
+    const [resetPassword, setResetPassword] = useState('');
+    const [resetError, setResetError] = useState('');
+    const [resetSuccess, setResetSuccess] = useState('');
+    const [isResetting, setIsResetting] = useState(false);
+
+    const [scores, setScores] = useState([]);
+    const [isLoadingScores, setIsLoadingScores] = useState(true);
+    const appId = getAppId();
+
+    // Effect to fetch leaderboard data
+    useEffect(() => {
+        const leaderboardColRef = collection(db, 'artifacts', appId, 'public/data/leaderboard');
+        const q = query(leaderboardColRef, orderBy('points', 'desc'), limit(5)); // Show top 5
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const scoresData = [];
+            querySnapshot.forEach((doc) => {
+                scoresData.push({ id: doc.id, ...doc.data() });
+            });
+            setScores(scoresData);
+            setIsLoadingScores(false);
+        }, (error) => {
+            console.error("Error fetching leaderboard for login screen: ", error);
+            setIsLoadingScores(false);
+        });
+
+        return () => unsubscribe();
+    }, [appId]);
 
     const handleLogin = async () => {
         if (!username.trim()) {
@@ -100,36 +130,117 @@ const LoginScreen = ({ onLogin }) => {
         }
     };
 
+    const handleAttemptReset = async () => {
+        setResetError('');
+        setResetSuccess('');
+        if (resetPassword !== 'admin') {
+            setResetError('Incorrect password.');
+            return;
+        }
+        setIsResetting(true);
+        const result = await onClearData();
+        if (result.success) {
+            setResetSuccess(result.message);
+            setTimeout(() => setResetSuccess(''), 5000); // Clear message after 5s
+        } else {
+            setResetError(result.message);
+        }
+        setIsResetting(false);
+        setResetPassword('');
+        setShowResetPrompt(false);
+    };
+    
+    const getRankColor = (index) => {
+        if (index === 0) return 'text-yellow-400';
+        if (index === 1) return 'text-gray-300';
+        if (index === 2) return 'text-yellow-600';
+        return 'text-gray-400';
+    };
+
     return (
-        <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 bg-opacity-80 rounded-2xl shadow-lg border border-red-500/50 backdrop-blur-sm">
-            <div className="text-center">
-                <BiohazardIcon />
-                <h1 className="text-4xl font-bold text-red-500 tracking-wider mt-2">OUTBREAK</h1>
-                <p className="text-gray-300 mt-2">Global Epidemic Protocol</p>
-            </div>
-            <div className="space-y-4">
-                <div>
-                    <label htmlFor="username" className="text-sm font-bold text-gray-400 block mb-2">
-                        Enter Agent Name:
-                    </label>
-                    <input
-                        id="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="e.g., Agent Smith"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-300"
-                        onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                    />
+        <div className="w-full max-w-4xl p-4 md:p-8 flex flex-col lg:flex-row gap-8 items-center">
+            {/* Login Panel */}
+            <div className="w-full lg:w-1/2">
+                <div className="w-full max-w-md mx-auto p-8 space-y-6 bg-gray-800 bg-opacity-80 rounded-2xl shadow-lg border border-red-500/50 backdrop-blur-sm">
+                    <div className="text-center">
+                        <BiohazardIcon />
+                        <h1 className="text-4xl font-bold text-red-500 tracking-wider mt-2">OUTBREAK</h1>
+                        <p className="text-gray-300 mt-2">Global Epidemic Protocol</p>
+                    </div>
+                    {resetSuccess && <p className="text-green-400 text-center text-sm bg-green-900/50 p-2 rounded-md">{resetSuccess}</p>}
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="username" className="text-sm font-bold text-gray-400 block mb-2">
+                                Enter Agent Name:
+                            </label>
+                            <input
+                                id="username"
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="e.g., Agent Smith"
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-300"
+                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                            />
+                        </div>
+                        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+                        <button
+                            onClick={handleLogin}
+                            disabled={isLoading}
+                            className="w-full flex justify-center items-center py-3 px-4 bg-red-600 hover:bg-red-700 rounded-lg text-white font-bold transition duration-300 disabled:bg-red-800 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? 'Authenticating...' : 'Initiate Protocol'}
+                        </button>
+                    </div>
+                    <div className="mt-6 text-center">
+                        {!showResetPrompt ? (
+                            <button onClick={() => { setShowResetPrompt(true); setResetError(''); setResetSuccess(''); }} className="text-xs text-gray-500 hover:text-red-400 transition">
+                                System Reset
+                            </button>
+                        ) : (
+                            <div className="p-4 bg-gray-900/50 rounded-lg mt-4 space-y-3 animate-fade-in">
+                                <label htmlFor="reset-password" className="text-sm font-bold text-gray-400 block">Enter Admin Password:</label>
+                                <input
+                                    id="reset-password"
+                                    type="password"
+                                    value={resetPassword}
+                                    onChange={(e) => setResetPassword(e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleAttemptReset()}
+                                />
+                                {resetError && <p className="text-red-400 text-sm">{resetError}</p>}
+                                <div className="flex gap-2 justify-center">
+                                     <button onClick={() => setShowResetPrompt(false)} className="py-2 px-4 bg-gray-600 hover:bg-gray-700 rounded-lg text-xs font-semibold">Cancel</button>
+                                    <button onClick={handleAttemptReset} disabled={isResetting} className="py-2 px-4 bg-red-800 hover:bg-red-700 rounded-lg text-xs font-bold disabled:bg-red-900">
+                                        {isResetting ? 'Resetting...' : 'Confirm Reset'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-                <button
-                    onClick={handleLogin}
-                    disabled={isLoading}
-                    className="w-full flex justify-center items-center py-3 px-4 bg-red-600 hover:bg-red-700 rounded-lg text-white font-bold transition duration-300 disabled:bg-red-800 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? 'Authenticating...' : 'Initiate Protocol'}
-                </button>
+            </div>
+
+            {/* Leaderboard Panel */}
+            <div className="w-full lg:w-1/2 bg-gray-800 bg-opacity-80 rounded-2xl shadow-lg border border-blue-500/50 p-6 backdrop-blur-sm">
+                <h2 className="text-3xl font-bold text-blue-400 mb-4 text-center">Top Agents</h2>
+                {isLoadingScores ? (
+                    <p className="text-center">Loading rankings...</p>
+                ) : scores.length === 0 ? (
+                    <p className="text-center text-gray-400">No agent data available.</p>
+                ) : (
+                    <ul className="space-y-3">
+                         {scores.map((player, index) => (
+                            <li key={player.id} className={`flex items-center justify-between p-3 rounded-lg ${index < 3 ? 'bg-gray-700/80' : 'bg-gray-700/50'}`}>
+                                <div className="flex items-center">
+                                    <span className={`font-bold text-lg w-8 ${getRankColor(index)}`}>{index + 1}</span>
+                                    <span className="font-semibold">{player.username}</span>
+                                </div>
+                                <span className={`font-bold text-lg ${getRankColor(index)}`}>{player.points} pts</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         </div>
     );
@@ -206,71 +317,9 @@ const PuzzleModal = ({ puzzle, user, onSolve, onClose, remainingTime }) => {
     );
 };
 
-// --- Leaderboard Modal Component ---
-const Leaderboard = ({ onClose }) => {
-    const [scores, setScores] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const appId = getAppId();
-
-    useEffect(() => {
-        // Query the public leaderboard collection
-        const leaderboardColRef = collection(db, 'artifacts', appId, 'public/data/leaderboard');
-        const q = query(leaderboardColRef, orderBy('points', 'desc'), limit(10));
-        
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const scoresData = [];
-            querySnapshot.forEach((doc) => {
-                scoresData.push({ id: doc.id, ...doc.data() });
-            });
-            setScores(scoresData);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching leaderboard: ", error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [appId]);
-
-    const getRankColor = (index) => {
-        if (index === 0) return 'text-yellow-400';
-        if (index === 1) return 'text-gray-300';
-        if (index === 2) return 'text-yellow-600';
-        return 'text-gray-400';
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-            <div className="bg-gray-800 border border-blue-500/50 rounded-xl shadow-lg w-full max-w-md p-6 text-white animate-fade-in">
-                <h2 className="text-3xl font-bold text-blue-400 mb-4 text-center">Top Agents</h2>
-                {isLoading ? (
-                    <p className="text-center">Loading rankings...</p>
-                ) : (
-                    <ul className="space-y-3">
-                        {scores.map((player, index) => (
-                            <li key={player.id} className={`flex items-center justify-between p-3 rounded-lg ${index < 3 ? 'bg-gray-700/80' : 'bg-gray-700/50'}`}>
-                                <div className="flex items-center">
-                                    <span className={`font-bold text-lg w-8 ${getRankColor(index)}`}>{index + 1}</span>
-                                    <span className="font-semibold">{player.username}</span>
-                                </div>
-                                <span className={`font-bold text-lg ${getRankColor(index)}`}>{player.points} pts</span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                <div className="mt-6 flex justify-center">
-                    <button onClick={onClose} className="py-2 px-6 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">Close</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
 // --- Game Screen Component ---
 const GameScreen = ({ user, onLogout }) => {
     const [activePuzzle, setActivePuzzle] = useState(null);
-    const [showLeaderboard, setShowLeaderboard] = useState(false);
     const appId = getAppId();
     const userId = auth.currentUser?.uid;
     const remainingTime = useIdleTimer(onLogout, 10000);
@@ -338,7 +387,6 @@ const GameScreen = ({ user, onLogout }) => {
     return (
         <div className="w-full max-w-6xl mx-auto p-4 md:p-8">
             {activePuzzle && <PuzzleModal puzzle={activePuzzle} user={user} onSolve={handleSolvePuzzle} onClose={() => setActivePuzzle(null)} remainingTime={remainingTime} />}
-            {showLeaderboard && <Leaderboard onClose={() => setShowLeaderboard(false)} />}
             <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-bold text-white">Agent: <span className="text-red-500">{user.username}</span></h1>
@@ -353,7 +401,6 @@ const GameScreen = ({ user, onLogout }) => {
                     <p className="text-3xl font-mono font-bold text-red-500">{remainingTime}</p>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setShowLeaderboard(true)} className="py-2 px-6 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold">Leaderboard</button>
                     <button onClick={onLogout} className="py-2 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold">Log Off</button>
                 </div>
             </header>
@@ -443,6 +490,28 @@ export default function App() {
     const handleLogout = () => {
         setUser(null);
     };
+    
+    const handleClearData = async () => {
+        try {
+            const leaderboardColRef = collection(db, 'artifacts', appId, 'public/data/leaderboard');
+            const leaderboardSnapshot = await getDocs(leaderboardColRef);
+            const deletePromises = [];
+            leaderboardSnapshot.forEach((doc) => {
+                deletePromises.push(deleteDoc(doc.ref));
+            });
+            await Promise.all(deletePromises);
+            
+            // NOTE: This only clears the public leaderboard. Due to security rules,
+            // clearing all private user data from the client-side is not feasible
+            // without compromising security. This would typically be handled by a
+            // secure backend function with admin privileges.
+            
+            return { success: true, message: 'All public leaderboard data has been cleared.' };
+        } catch (error) {
+            console.error("Error clearing data: ", error);
+            return { success: false, message: 'Failed to clear data due to permissions.' };
+        }
+    };
 
     return (
         <div 
@@ -458,7 +527,7 @@ export default function App() {
                 ) : user ? (
                     <GameScreen user={user} onLogout={handleLogout} />
                 ) : (
-                    <LoginScreen onLogin={handleLogin} />
+                    <LoginScreen onLogin={handleLogin} onClearData={handleClearData} />
                 )}
             </div>
         </div>

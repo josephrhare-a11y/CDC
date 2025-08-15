@@ -1,6 +1,7 @@
 // FIREBASE DO NOT DELETE
 const __firebase_config = '\n{\n  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY",\n  "authDomain": "bard-frontend.firebaseapp.com",\n  "projectId": "bard-frontend",\n  "storageBucket": "bard-frontend.firebasestorage.app",\n  "messagingSenderId": "175205271074",\n  "appId": "1:175205271074:web:2b7bd4d34d33bf38e6ec7b"\n}\n'
 // FIREBASE DO NOT DELETE
+
 // This is a complete, self-contained React application for a Halloween escape room.
 // It uses Firebase Firestore to save and retrieve player progress.
 // The app uses a webcam to scan a QR code on a player's ID badge, which
@@ -341,6 +342,18 @@ export default function App() {
         setScreen('scan');
         handleStartScan();
     };
+    
+    const handleLogout = () => {
+        setScreen('scan');
+        setPlayer(null);
+        setScannedId('');
+        setPuzzleInput('');
+        setFeedback(null);
+        setCurrentPuzzle(null);
+        setMessage(null);
+        setShowHint(false);
+        setPlayerNameInput('');
+    };
 
     const handleSelectPuzzle = (puzzleId) => {
         setCurrentPuzzle(puzzles[puzzleId]);
@@ -482,10 +495,10 @@ export default function App() {
                             )}
                         </div>
                         <button
-                            onClick={() => setScreen('scan')}
+                            onClick={handleLogout}
                             className="mt-8 bg-gray-800 text-white font-creepy text-xl px-6 py-3 rounded-full shadow-lg hover:bg-gray-700 transition duration-300 transform hover:scale-105"
                         >
-                            Go Back
+                            Log Out
                         </button>
                     </div>
                 );
@@ -520,10 +533,10 @@ export default function App() {
                             )}
                         </div>
                         <button
-                            onClick={handleStartScan}
+                            onClick={handleLogout}
                             className="mt-8 bg-gray-800 text-white font-creepy text-xl px-6 py-3 rounded-full shadow-lg hover:bg-gray-700 transition duration-300 transform hover:scale-105"
                         >
-                            Scan a Different ID
+                            Log Out
                         </button>
                     </div>
                 );
@@ -643,10 +656,10 @@ export default function App() {
                         </div>
 
                         <button
-                            onClick={handleStartScan}
+                            onClick={handleLogout}
                             className="mt-8 bg-red-600 text-white font-creepy text-xl px-6 py-3 rounded-full shadow-lg hover:bg-red-700 transition duration-300 transform hover:scale-110"
                         >
-                            Scan a Different Player ID
+                            Log Out
                         </button>
                     </div>
                 );
@@ -733,7 +746,7 @@ export default function App() {
                             <span className="text-4xl text-green-200 font-creepy">{player.totalPoints}</span>
                         </div>
                         <button
-                            onClick={handleStartScan}
+                            onClick={handleLogout}
                             className="mt-8 bg-red-600 text-white font-creepy text-xl px-6 py-3 rounded-full shadow-lg hover:bg-red-700 transition duration-300 transform hover:scale-110"
                         >
                             Start a New Game
@@ -781,3 +794,4 @@ export default function App() {
         </div>
     );
 }
+

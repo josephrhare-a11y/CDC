@@ -4,8 +4,8 @@ const __firebase_config = '\n{\n  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtb
 
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, collection, query, orderBy, limit } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 
 // --- Helper function to get App ID ---
 const getAppId = () => {
@@ -206,10 +206,71 @@ const PuzzleModal = ({ puzzle, user, onSolve, onClose, remainingTime }) => {
     );
 };
 
+// --- Leaderboard Modal Component ---
+const Leaderboard = ({ onClose }) => {
+    const [scores, setScores] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const appId = getAppId();
+
+    useEffect(() => {
+        // Query the public leaderboard collection
+        const leaderboardColRef = collection(db, 'artifacts', appId, 'public/data/leaderboard');
+        const q = query(leaderboardColRef, orderBy('points', 'desc'), limit(10));
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const scoresData = [];
+            querySnapshot.forEach((doc) => {
+                scoresData.push({ id: doc.id, ...doc.data() });
+            });
+            setScores(scoresData);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching leaderboard: ", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [appId]);
+
+    const getRankColor = (index) => {
+        if (index === 0) return 'text-yellow-400';
+        if (index === 1) return 'text-gray-300';
+        if (index === 2) return 'text-yellow-600';
+        return 'text-gray-400';
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 backdrop-blur-sm p-4">
+            <div className="bg-gray-800 border border-blue-500/50 rounded-xl shadow-lg w-full max-w-md p-6 text-white animate-fade-in">
+                <h2 className="text-3xl font-bold text-blue-400 mb-4 text-center">Top Agents</h2>
+                {isLoading ? (
+                    <p className="text-center">Loading rankings...</p>
+                ) : (
+                    <ul className="space-y-3">
+                        {scores.map((player, index) => (
+                            <li key={player.id} className={`flex items-center justify-between p-3 rounded-lg ${index < 3 ? 'bg-gray-700/80' : 'bg-gray-700/50'}`}>
+                                <div className="flex items-center">
+                                    <span className={`font-bold text-lg w-8 ${getRankColor(index)}`}>{index + 1}</span>
+                                    <span className="font-semibold">{player.username}</span>
+                                </div>
+                                <span className={`font-bold text-lg ${getRankColor(index)}`}>{player.points} pts</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="mt-6 flex justify-center">
+                    <button onClick={onClose} className="py-2 px-6 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">Close</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- Game Screen Component ---
 const GameScreen = ({ user, onLogout }) => {
     const [activePuzzle, setActivePuzzle] = useState(null);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
     const appId = getAppId();
     const userId = auth.currentUser?.uid;
     const remainingTime = useIdleTimer(onLogout, 10000);
@@ -233,8 +294,14 @@ const GameScreen = ({ user, onLogout }) => {
         const newSolvedPuzzles = [...(user.solvedPuzzles || []), puzzleId];
 
         try {
+            // Update private user document
             const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'players', user.username);
             await updateDoc(userDocRef, { points: newPoints, solvedPuzzles: newSolvedPuzzles });
+
+            // Update public leaderboard document
+            const leaderboardDocRef = doc(db, 'artifacts', appId, 'public/data/leaderboard', user.username);
+            await setDoc(leaderboardDocRef, { username: user.username, points: newPoints }, { merge: true });
+
         } catch (error) {
             console.error("Error updating score: ", error);
         }
@@ -271,20 +338,24 @@ const GameScreen = ({ user, onLogout }) => {
     return (
         <div className="w-full max-w-6xl mx-auto p-4 md:p-8">
             {activePuzzle && <PuzzleModal puzzle={activePuzzle} user={user} onSolve={handleSolvePuzzle} onClose={() => setActivePuzzle(null)} remainingTime={remainingTime} />}
-            <header className="flex flex-col md:flex-row justify-between items-center mb-8 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
+            {showLeaderboard && <Leaderboard onClose={() => setShowLeaderboard(false)} />}
+            <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-bold text-white">Agent: <span className="text-red-500">{user.username}</span></h1>
                     <p className="text-gray-400">STATUS: ACTIVE</p>
                 </div>
-                <div className="text-center mt-4 md:mt-0">
+                <div className="text-center">
                     <p className="text-lg text-gray-300">Total Points</p>
                     <p className="text-5xl font-bold text-yellow-400 tracking-widest">{user.points}</p>
                 </div>
-                 <div className="text-center mt-4 md:mt-0">
+                 <div className="text-center">
                     <p className="text-sm text-red-500/80">SESSION TERMINATES IN:</p>
                     <p className="text-3xl font-mono font-bold text-red-500">{remainingTime}</p>
                 </div>
-                <button onClick={onLogout} className="mt-4 md:mt-0 py-2 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold">Log Off</button>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowLeaderboard(true)} className="py-2 px-6 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold">Leaderboard</button>
+                    <button onClick={onLogout} className="py-2 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold">Log Off</button>
+                </div>
             </header>
             <main className="space-y-6">{renderPuzzleSection('Easy')}{renderPuzzleSection('Medium')}{renderPuzzleSection('Hard')}</main>
         </div>
@@ -302,15 +373,24 @@ export default function App() {
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
+                // If we have a user, set the ID and we're ready.
                 setUserId(firebaseUser.uid);
+                setIsLoading(false);
             } else {
+                // If there's no user, attempt to sign in.
                 try {
-                    await signInAnonymously(auth);
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    // After a successful sign-in, onAuthStateChanged will run again with a user object.
                 } catch (error) {
-                    console.error("Anonymous sign-in failed:", error);
+                    console.error("Authentication failed:", error);
+                    // If auth fails, stop loading so the app doesn't hang.
+                    setIsLoading(false);
                 }
             }
-            setIsLoading(false);
         });
         return () => unsubscribeAuth();
     }, []);
@@ -346,6 +426,11 @@ export default function App() {
             } else {
                 const newUser = { username, points: 0, solvedPuzzles: [], usedHints: [] };
                 await setDoc(userDocRef, newUser);
+                
+                // Also create a public leaderboard entry for the new user
+                const leaderboardDocRef = doc(db, 'artifacts', appId, 'public/data/leaderboard', username);
+                await setDoc(leaderboardDocRef, { username: username, points: 0 }, { merge: true });
+
                 setUser(newUser);
             }
         } catch (error) {
@@ -360,10 +445,15 @@ export default function App() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white font-sans flex items-center justify-center p-4 bg-cover bg-center" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/hexabump.png')" }}>
+        <div 
+            className="min-h-screen bg-gray-900 text-white font-sans flex items-center justify-center p-4" 
+            style={{ 
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg id='hexagons' fill='%23ff0000' fill-opacity='0.05' fill-rule='nonzero'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.99-7.5L26 15v18.5l-13 7.5L0 33.5V15z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` 
+            }}
+        >
             <div className="absolute inset-0 bg-black opacity-60"></div>
             <div className="relative z-10 w-full">
-                {isLoading && !user ? (
+                {isLoading ? (
                     <div className="text-center text-xl">Initializing System...</div>
                 ) : user ? (
                     <GameScreen user={user} onLogout={handleLogout} />

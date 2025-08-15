@@ -2,7 +2,7 @@
 const __firebase_config = '\n{\n  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY",\n  "authDomain": "bard-frontend.firebaseapp.com",\n  "projectId": "bard-frontend",\n  "storageBucket": "bard-frontend.firebasestorage.app",\n  "messagingSenderId": "175205271074",\n  "appId": "1:175205271074:web:2b7bd4d34d33bf38e6ec7b"\n}\n'
 // FIREBASE DO NOT DELETE
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -35,6 +35,48 @@ const BiohazardIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0" />
     </svg>
 );
+
+// --- Inactivity Timer Hook ---
+const useIdleTimer = (onIdle, timeout = 10000) => {
+    const [remainingTime, setRemainingTime] = useState(timeout / 1000);
+    const timeoutId = useRef(null);
+    const intervalId = useRef(null);
+
+    useEffect(() => {
+        const resetTimer = () => {
+            if (timeoutId.current) clearTimeout(timeoutId.current);
+            if (intervalId.current) clearInterval(intervalId.current);
+
+            setRemainingTime(timeout / 1000);
+
+            timeoutId.current = setTimeout(onIdle, timeout);
+
+            intervalId.current = setInterval(() => {
+                setRemainingTime(prevTime => {
+                    if (prevTime <= 1) {
+                        clearInterval(intervalId.current);
+                        return 0;
+                    }
+                    return prevTime - 1;
+                });
+            }, 1000);
+        };
+
+        const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+        
+        resetTimer();
+        events.forEach(event => window.addEventListener(event, resetTimer, { capture: true }));
+
+        return () => {
+            events.forEach(event => window.removeEventListener(event, resetTimer, { capture: true }));
+            if (timeoutId.current) clearTimeout(timeoutId.current);
+            if (intervalId.current) clearInterval(intervalId.current);
+        };
+    }, [onIdle, timeout]);
+
+    return remainingTime;
+};
+
 
 // --- Login Screen Component ---
 const LoginScreen = ({ onLogin }) => {
@@ -94,7 +136,7 @@ const LoginScreen = ({ onLogin }) => {
 };
 
 // --- Puzzle Modal Component ---
-const PuzzleModal = ({ puzzle, user, onSolve, onClose }) => {
+const PuzzleModal = ({ puzzle, user, onSolve, onClose, remainingTime }) => {
     const [answer, setAnswer] = useState('');
     const [error, setError] = useState('');
     const [showHint, setShowHint] = useState(false);
@@ -130,7 +172,7 @@ const PuzzleModal = ({ puzzle, user, onSolve, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-            <div className="bg-gray-800 border border-yellow-500/50 rounded-xl shadow-lg w-full max-w-lg p-6 text-white animate-fade-in">
+            <div className="bg-gray-800 border border-yellow-500/50 rounded-xl shadow-lg w-full max-w-lg p-6 text-white animate-fade-in relative">
                 <h2 className="text-2xl font-bold text-yellow-400 mb-2">{puzzle.title}</h2>
                 <p className="text-gray-300 mb-4">{puzzle.question}</p>
                 
@@ -155,6 +197,10 @@ const PuzzleModal = ({ puzzle, user, onSolve, onClose }) => {
                     <button onClick={onClose} className="py-2 px-4 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold">Cancel</button>
                     <button onClick={handleSubmit} className="py-2 px-4 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-bold">Submit</button>
                 </div>
+
+                <div className="absolute bottom-4 left-6 text-sm text-red-400 font-mono">
+                    Session ends in: {remainingTime}s
+                </div>
             </div>
         </div>
     );
@@ -166,6 +212,7 @@ const GameScreen = ({ user, onLogout }) => {
     const [activePuzzle, setActivePuzzle] = useState(null);
     const appId = getAppId();
     const userId = auth.currentUser?.uid;
+    const remainingTime = useIdleTimer(onLogout, 10000);
 
     const puzzles = [
         { id: 'e1', difficulty: 'Easy', points: 5, title: 'Analyze DNA Sequence', question: 'In a DNA strand, what base pairs with Adenine (A)?', answer: 'Thymine', hint: 'It starts with the letter T.' },
@@ -223,7 +270,7 @@ const GameScreen = ({ user, onLogout }) => {
 
     return (
         <div className="w-full max-w-6xl mx-auto p-4 md:p-8">
-            {activePuzzle && <PuzzleModal puzzle={activePuzzle} user={user} onSolve={handleSolvePuzzle} onClose={() => setActivePuzzle(null)} />}
+            {activePuzzle && <PuzzleModal puzzle={activePuzzle} user={user} onSolve={handleSolvePuzzle} onClose={() => setActivePuzzle(null)} remainingTime={remainingTime} />}
             <header className="flex flex-col md:flex-row justify-between items-center mb-8 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-bold text-white">Agent: <span className="text-red-500">{user.username}</span></h1>
@@ -232,6 +279,10 @@ const GameScreen = ({ user, onLogout }) => {
                 <div className="text-center mt-4 md:mt-0">
                     <p className="text-lg text-gray-300">Total Points</p>
                     <p className="text-5xl font-bold text-yellow-400 tracking-widest">{user.points}</p>
+                </div>
+                 <div className="text-center mt-4 md:mt-0">
+                    <p className="text-sm text-red-500/80">SESSION TERMINATES IN:</p>
+                    <p className="text-3xl font-mono font-bold text-red-500">{remainingTime}</p>
                 </div>
                 <button onClick={onLogout} className="mt-4 md:mt-0 py-2 px-6 bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold">Log Off</button>
             </header>

@@ -17,6 +17,10 @@ const QR_SCANNER_CDN = "https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/i
 // Tailwind CSS is used for styling. No additional CSS is required.
 // The font 'Creepster' is a custom spooky font loaded from Google Fonts.
 
+// FIREBASE DO NOT DELETE
+const __firebase_config = '\n{\n  "apiKey": "AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY",\n  "authDomain": "bard-frontend.firebaseapp.com",\n  "projectId": "bard-frontend",\n  "storageBucket": "bard-frontend.firebasestorage.app",\n  "messagingSenderId": "175205271074",\n  "appId": "1:175205271074:web:2b7bd4d34d33bf38e6ec7b"\n}\n'
+// FIREBASE DO NOT DELETE
+
 // --- Main App Component ---
 export default function App() {
     // State variables for the app

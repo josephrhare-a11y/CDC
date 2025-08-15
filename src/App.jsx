@@ -20,8 +20,6 @@ const QR_SCANNER_CDN = "https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/i
 // Tailwind CSS is used for styling. No additional CSS is required.
 // The font 'Creepster' is a custom spooky font loaded from Google Fonts.
 
-
-
 // --- Main App Component ---
 export default function App() {
     // State variables for the app
@@ -38,10 +36,9 @@ export default function App() {
     const [currentPuzzle, setCurrentPuzzle] = useState(null);
     const [message, setMessage] = useState(null);
     // State to control which screen is displayed
-    const [screen, setScreen] = useState('scan'); // 'scan', 'profileCreated', 'homepage', 'puzzle', 'completed'
+    const [screen, setScreen] = useState('scan'); // 'scan', 'profileCreated', 'homepage', 'puzzle', 'completed', 'newProfile'
     const [playerNameInput, setPlayerNameInput] = useState('');
     const [showHint, setShowHint] = useState(false);
-    const [newProfileIdInput, setNewProfileIdInput] = useState('');
 
     // QR code data URI
     const [qrDataUri, setQrDataUri] = useState('');
@@ -304,15 +301,12 @@ export default function App() {
     
     const handleNewProfile = () => {
         setScreen('newProfile');
-        setScannedId('');
         setPlayerNameInput('');
-        setNewProfileIdInput('');
     };
 
     const handleCreateProfile = async () => {
-        const newId = newProfileIdInput.trim();
-        if (!newId || !playerNameInput.trim()) {
-            setMessage('Please enter both an ID and your name to create a profile.');
+        if (!playerNameInput.trim()) {
+            setMessage('Please enter your name to create a profile.');
             return;
         }
 
@@ -320,17 +314,12 @@ export default function App() {
             setMessage('Database not ready. Please wait a moment and try again.');
             return;
         }
-
+        
+        // Generate a new unique ID for the player
+        const newId = `player-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const playerDocRef = doc(db, 'artifacts', appId, 'users', userId, 'players', newId);
         
         try {
-            // Check if the player ID already exists before creating a new one.
-            const docSnap = await getDoc(playerDocRef);
-            if (docSnap.exists()) {
-                setMessage('That Player ID already exists. Please choose a different one.');
-                return;
-            }
-
             const newPlayer = {
                 playerId: newId,
                 name: playerNameInput.trim(),
@@ -469,16 +458,9 @@ export default function App() {
                             Create New Profile
                         </h2>
                         <p className="text-lg text-gray-300 text-center max-w-md">
-                            Enter your desired Agent ID and your name to create a new profile. Your Agent ID can be a simple name or number.
+                            Enter your name to create a new profile. Your Agent ID will be assigned automatically.
                         </p>
                         <div className="w-full max-w-md p-6 bg-gray-900 rounded-xl shadow-2xl border-2 border-yellow-600 animate-fade-in">
-                            <input
-                                type="text"
-                                className="w-full p-3 mb-4 text-lg text-white bg-gray-800 rounded-lg border-2 border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 placeholder-gray-500"
-                                placeholder="Enter desired Agent ID"
-                                value={newProfileIdInput}
-                                onChange={(e) => setNewProfileIdInput(e.target.value)}
-                            />
                             <input
                                 type="text"
                                 className="w-full p-3 mb-4 text-lg text-white bg-gray-800 rounded-lg border-2 border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 placeholder-gray-500"

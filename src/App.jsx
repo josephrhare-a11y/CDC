@@ -41,7 +41,7 @@ export default function App() {
         { name: "Brazil", flag: "🇧🇷", infected: 40876554, deaths: 755001, trend: [7, 9, 8, 11, 10, 13, 12, 15] },
         { name: "Japan", flag: "🇯🇵", infected: 38765921, deaths: 89543, trend: [3, 4, 5, 4, 6, 5, 7, 6] },
         { name: "South Korea", flag: "🇰🇷", infected: 35661045, deaths: 41032, trend: [2, 3, 4, 3, 5, 4, 6, 5] },
-        { name: "Italy", flag: "🇮�", infected: 28998432, deaths: 201776, trend: [6, 5, 7, 6, 8, 7, 9, 8] },
+        { name: "Italy", flag: "🇮🇹", infected: 28998432, deaths: 201776, trend: [6, 5, 7, 6, 8, 7, 9, 8] },
         { name: "United Kingdom", flag: "🇬🇧", infected: 26781220, deaths: 254321, trend: [8, 7, 6, 7, 5, 6, 4, 5] },
         { name: "Russia", flag: "🇷🇺", infected: 25102341, deaths: 423876, trend: [5, 6, 5, 6, 7, 6, 7, 8] }
     ], []);
@@ -126,16 +126,19 @@ export default function App() {
     
     // --- JSX for Rendering the UI ---
     return (
-        <div className="bg-[#111827] text-gray-100 min-h-screen p-2 sm:p-4 lg:p-6 font-sans bg-[radial-gradient(circle_at_25%_25%,_rgba(220,38,38,0.05),_transparent_30%),radial-gradient(circle_at_75%_75%,_rgba(220,38,38,0.05),_transparent_30%)]">
-            <div className="w-full max-w-screen-2xl mx-auto">
-                <header className="text-center mb-6">
+        <div 
+            className="text-gray-100 min-h-screen p-2 sm:p-4 lg:p-6 font-sans bg-cover bg-center bg-fixed" 
+            style={{ backgroundImage: "url('https://imgur.com/a/qca0lg1.png')" }}
+        >
+            <div className="w-full max-w-screen-xl mx-auto">
+                <header className="text-center mb-6 bg-black/50 backdrop-blur-sm p-4 rounded-lg">
                     <h1 className="text-3xl md:text-5xl font-bold text-[#dc2626] font-mono tracking-wider" style={{ textShadow: '0 0 5px #ef4444, 0 0 10px #ef4444' }}>PROJECT: CONTAGION</h1>
                     <p className="text-red-400 text-sm md:text-base mt-1">Global Outbreak Status Terminal</p>
                 </header>
 
-                <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+                <main className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     {/* Left Panel: Country List */}
-                    <aside className="lg:col-span-3 bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-4 h-[60vh] lg:h-[75vh] flex flex-col backdrop-blur-md">
+                    <aside className="bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-4 h-[60vh] lg:h-[75vh] flex flex-col backdrop-blur-md">
                         <h2 className="text-lg font-bold text-red-500 border-b-2 border-red-500/30 pb-2 mb-4">GLOBAL HOTSPOTS</h2>
                         <div className="space-y-3 overflow-y-auto pr-2 flex-grow">
                             {countryData.map(country => (
@@ -154,13 +157,8 @@ export default function App() {
                         </div>
                     </aside>
 
-                    {/* Center Panel: World Map Image */}
-                    <section className="lg:col-span-6 bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-1 h-[50vh] lg:h-[75vh] flex flex-col items-center justify-center overflow-hidden backdrop-blur-md">
-                        <img src="https://imgur.com/a/qca0lg1" alt="World Outbreak Map" className="w-full h-full object-cover rounded-md" />
-                    </section>
-
                     {/* Right Panel: Stats & Ticker */}
-                    <aside className="lg:col-span-3 bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-4 h-[60vh] lg:h-[75vh] flex flex-col backdrop-blur-md">
+                    <aside className="bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-4 h-[60vh] lg:h-[75vh] flex flex-col backdrop-blur-md">
                         <div>
                             <h2 className="text-lg font-bold text-red-500 border-b-2 border-red-500/30 pb-2 mb-4">GLOBAL PANDEMIC STATUS</h2>
                             <div className="grid grid-cols-2 gap-4 text-center">

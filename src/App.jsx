@@ -128,7 +128,7 @@ export default function App() {
     return (
         <div 
             className="text-gray-100 min-h-screen p-2 sm:p-4 lg:p-6 font-sans bg-cover bg-center bg-fixed" 
-            style={{ backgroundImage: "url('https://imgur.com/a/qca0lg1.png')" }}
+            style={{ backgroundImage: "url('https://api.hub.jhu.edu/factory/sites/default/files/styles/soft_crop_2400/public/red_covid_map.jpg')" }}
         >
             <div className="w-full max-w-screen-xl mx-auto">
                 <header className="text-center mb-6 bg-black/50 backdrop-blur-sm p-4 rounded-lg">

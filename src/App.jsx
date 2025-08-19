@@ -156,7 +156,7 @@ export default function App() {
 
                     {/* Center Panel: World Map Image */}
                     <section className="lg:col-span-6 bg-[rgba(17,24,39,0.8)] border border-[rgba(220,38,38,0.2)] rounded-lg p-1 h-[50vh] lg:h-[75vh] flex flex-col items-center justify-center overflow-hidden backdrop-blur-md">
-                        <img src="https://i.imgur.com/8NA5qj8.png" alt="World Outbreak Map" className="w-full h-full object-cover rounded-md" />
+                        <img src="https://imgur.com/a/qca0lg1" alt="World Outbreak Map" className="w-full h-full object-cover rounded-md" />
                     </section>
 
                     {/* Right Panel: Stats & Ticker */}

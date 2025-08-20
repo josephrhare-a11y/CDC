@@ -433,7 +433,7 @@ export default function App() {
     };
     
     return (
-        <div className="text-gray-100 min-h-screen p-2 sm:p-4 lg:p-6 font-sans bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('https://i.imgur.com/8NA5qj8.png')" }}>
+        <div className="text-gray-100 min-h-screen p-2 sm:p-4 lg:p-6 font-sans bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('https://api.hub.jhu.edu/factory/sites/default/files/styles/soft_crop_2400/public/red_covid_map.jpg')" }}>
             <div className="w-full max-w-screen-2xl mx-auto">
                 <header className="text-center mb-6 bg-black/50 backdrop-blur-sm p-4 rounded-lg">
                     <h1 className="text-3xl md:text-5xl font-bold text-[#dc2626] font-mono tracking-wider" style={{ textShadow: '0 0 5px #ef4444, 0 0 10px #ef4444' }}>PROJECT: CONTAGION</h1>

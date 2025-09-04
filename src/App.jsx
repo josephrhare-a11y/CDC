@@ -57,7 +57,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
         if (!db || !isAuthReady) return;
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const playersRef = collection(db, `artifacts/${appId}/public/data/players`);
+        const playersRef = collection(db, `artifacts/${appId}/players`);
         
         const unsubscribe = onSnapshot(playersRef, (snapshot) => {
             const playersData = snapshot.docs.map(doc => doc.data());

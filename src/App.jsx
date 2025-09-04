@@ -1,3 +1,15 @@
+// DONT DELETE ME WHEN COPYING
+const realFirebaseConfig = {
+  apiKey: "AIzaSyAomaZzvP00NJw54-WKn30VtiMbFxY7yz0",
+  authDomain: "cdc-escape-room.firebaseapp.com",
+  projectId: "cdc-escape-room",
+  storageBucket: "cdc-escape-room.firebasestorage.app",
+  messagingSenderId: "806926771572",
+  appId: "1:806926771572:web:960a402ed9a632b4c3b821",
+  measurementId: "G-LGFHDQ8YMK"
+};
+// END DONT DELETE ME
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -91,16 +103,6 @@ const Leaderboard = ({ db, isAuthReady }) => {
             </div>
         </div>
     );
-};
-
-const realFirebaseConfig = {
-  apiKey: "AIzaSyAomaZzvP00NJw54-WKn30VtiMbFxY7yz0",
-  authDomain: "cdc-escape-room.firebaseapp.com",
-  projectId: "cdc-escape-room",
-  storageBucket: "cdc-escape-room.firebasestorage.app",
-  messagingSenderId: "806926771572",
-  appId: "1:806926771572:web:960a402ed9a632b4c3b821",
-  measurementId: "G-LGFHDQ8YMK"
 };
 
 const PuzzleAppComponent = () => {

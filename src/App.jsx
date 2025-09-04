@@ -115,7 +115,9 @@ const Leaderboard = ({ db, isAuthReady }) => {
 const QrLoginComponent = ({ onLogin }) => {
     const [scriptLoaded, setScriptLoaded] = useState(false);
     const [scanError, setScanError] = useState('');
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
     const scannerRef = useRef(null);
+    const html5QrCodeRef = useRef(null);
 
     useEffect(() => {
         if (window.Html5Qrcode) {
@@ -137,45 +139,53 @@ const QrLoginComponent = ({ onLogin }) => {
     }, []);
 
     useEffect(() => {
-        if (!scriptLoaded || !scannerRef.current) return;
-        
-        let html5QrCode;
+        if (!scriptLoaded || !scannerRef.current || !isCameraOpen) return;
+
         const scannerContainerId = "qr-reader-container";
+        const html5QrCode = new window.Html5Qrcode(scannerContainerId);
+        html5QrCodeRef.current = html5QrCode;
+        
         let isScanning = true;
 
-        try {
-            html5QrCode = new window.Html5Qrcode(scannerContainerId);
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                if (isScanning) {
-                    isScanning = false;
-                    onLogin(decodedText);
-                    if (html5QrCode && html5QrCode.isScanning) {
-                       html5QrCode.stop().catch(err => console.error("Failed to stop scanner post-scan.", err));
-                    }
+        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+            if (isScanning) {
+                isScanning = false;
+                onLogin(decodedText);
+                 if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                    html5QrCodeRef.current.stop().catch(err => console.error("Failed to stop scanner post-scan.", err));
                 }
-            };
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                .catch(err => setScanError("Could not start camera. Please grant camera permissions."));
-
-        } catch(e) {
-            setScanError("QR Scanner initialization failed.");
-            console.error(e);
-        }
-
-        return () => {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.error("Failed to stop scanner on cleanup.", err));
             }
         };
-    }, [scriptLoaded, onLogin]);
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+            .catch(err => setScanError("Could not start camera. Please grant permissions."));
+
+        return () => {
+             if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                html5QrCodeRef.current.stop().catch(err => console.error("Failed to stop scanner on cleanup.", err));
+            }
+        };
+    }, [scriptLoaded, isCameraOpen, onLogin]);
+    
+    const handleScanButtonClick = () => {
+        setScanError('');
+        setIsCameraOpen(true);
+    };
 
     return (
         <div className="w-full max-w-xs aspect-square bg-slate-800 border border-slate-600 flex items-center justify-center">
-            {!scriptLoaded && !scanError && <p>Loading Scanner...</p>}
-            {scanError && <p className="text-red-500 text-center p-4">{scanError}</p>}
-            <div id="qr-reader-container" ref={scannerRef} style={{ width: '100%' }}></div>
+            {!isCameraOpen ? (
+                <button onClick={handleScanButtonClick} className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 transition-colors">
+                    Scan Agent ID Badge
+                </button>
+            ) : (
+                <>
+                    {!scriptLoaded && !scanError && <p>Loading Scanner...</p>}
+                    {scanError && <p className="text-red-500 text-center p-4">{scanError}</p>}
+                    <div id="qr-reader-container" ref={scannerRef} style={{ width: '100%' }}></div>
+                </>
+            )}
         </div>
     );
 };

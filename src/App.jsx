@@ -206,7 +206,7 @@ const PuzzleAppComponent = () => {
         setMessage('');
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const userRef = doc(db, `artifacts/${appId}/public/data/players`, formattedUsername);
+            const userRef = doc(db, `artifacts/${appId}/players`, formattedUsername);
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
                 setCurrentUser(userSnap.data());
@@ -248,7 +248,7 @@ const PuzzleAppComponent = () => {
             const updatedUser = { ...currentUser, score: newScore, completedPuzzles: { ...currentUser.completedPuzzles, [puzzleId]: pointsAwarded }};
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const userRef = doc(db, `artifacts/${appId}/public/data/players`, currentUser.name);
+                const userRef = doc(db, `artifacts/${appId}/players`, currentUser.name);
                 await setDoc(userRef, updatedUser);
                 setCurrentUser(updatedUser);
                 setMessage(`Correct. ${pointsAwarded} points awarded.`);

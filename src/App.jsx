@@ -112,6 +112,73 @@ const Leaderboard = ({ db, isAuthReady }) => {
     );
 };
 
+const QrLoginComponent = ({ onLogin }) => {
+    const [scriptLoaded, setScriptLoaded] = useState(false);
+    const [scanError, setScanError] = useState('');
+    const scannerRef = useRef(null);
+
+    useEffect(() => {
+        if (window.Html5Qrcode) {
+            setScriptLoaded(true);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js";
+        script.async = true;
+        script.onload = () => setScriptLoaded(true);
+        script.onerror = () => setScanError("Could not load QR scanner script.");
+        document.body.appendChild(script);
+
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!scriptLoaded || !scannerRef.current) return;
+        
+        let html5QrCode;
+        const scannerContainerId = "qr-reader-container";
+        let isScanning = true;
+
+        try {
+            html5QrCode = new window.Html5Qrcode(scannerContainerId);
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                if (isScanning) {
+                    isScanning = false;
+                    onLogin(decodedText);
+                    if (html5QrCode && html5QrCode.isScanning) {
+                       html5QrCode.stop().catch(err => console.error("Failed to stop scanner post-scan.", err));
+                    }
+                }
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(err => setScanError("Could not start camera. Please grant camera permissions."));
+
+        } catch(e) {
+            setScanError("QR Scanner initialization failed.");
+            console.error(e);
+        }
+
+        return () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("Failed to stop scanner on cleanup.", err));
+            }
+        };
+    }, [scriptLoaded, onLogin]);
+
+    return (
+        <div className="w-full max-w-xs aspect-square bg-slate-800 border border-slate-600 flex items-center justify-center">
+            {!scriptLoaded && !scanError && <p>Loading Scanner...</p>}
+            {scanError && <p className="text-red-500 text-center p-4">{scanError}</p>}
+            <div id="qr-reader-container" ref={scannerRef} style={{ width: '100%' }}></div>
+        </div>
+    );
+};
 
 const PuzzleAppComponent = () => {
     // Firebase state
@@ -120,7 +187,6 @@ const PuzzleAppComponent = () => {
 
     // App state
     const [currentUser, setCurrentUser] = useState(null);
-    const [usernameInput, setUsernameInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
     
@@ -207,13 +273,12 @@ const PuzzleAppComponent = () => {
     }, [currentUser]);
 
     const formatUsername = (name) => name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
-
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        if (!usernameInput.trim() || !db) return;
-        const formattedUsername = formatUsername(usernameInput);
+    
+    const processLoginAttempt = async (username) => {
+        if (!username.trim() || !db) return;
+        const formattedUsername = formatUsername(username);
         setLoading(true);
-        setMessage('');
+        setMessage(`QR Code detected. Authenticating Agent ${formattedUsername}...`);
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const userRef = doc(db, getPlayersCollectionPath(appId), formattedUsername);
@@ -232,7 +297,6 @@ const PuzzleAppComponent = () => {
             setMessage("Error: Could not access secure database.");
         } finally {
             setLoading(false);
-            setUsernameInput('');
         }
     };
     
@@ -288,17 +352,16 @@ const PuzzleAppComponent = () => {
     );
 
     const renderContent = () => {
-        if (loading) return <div className="text-center text-sky-300">Connecting...</div>;
+        if (loading && !currentUser) return <div className="text-center text-sky-300">Initializing Secure Terminal...</div>;
 
         if (!currentUser) {
             return (
                 <div className="flex flex-col h-full">
-                    <form onSubmit={handleLogin} className="flex flex-col gap-4 items-center justify-center flex-shrink-0">
-                        <p className="text-center text-base">Agent Login</p>
-                        <input type="text" placeholder="Enter Codename" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="bg-slate-800 border border-slate-600 rounded-none p-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                        <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 w-full max-w-xs transition-colors">Access Terminal</button>
-                        {message && <p className="text-yellow-400 mt-4 text-sm">{message}</p>}
-                    </form>
+                    <div className="flex flex-col gap-4 items-center justify-center flex-shrink-0">
+                        <p className="text-center text-base">Scan Agent ID</p>
+                        <QrLoginComponent onLogin={processLoginAttempt} />
+                        {message && <p className="text-yellow-400 mt-4 text-sm text-center">{message}</p>}
+                    </div>
                     <div className="flex-grow overflow-y-auto mt-4 pr-2">
                         {isAuthReady && <Leaderboard db={db} isAuthReady={isAuthReady} />}
                     </div>

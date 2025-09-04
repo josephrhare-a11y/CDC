@@ -8,6 +8,12 @@ const realFirebaseConfig = {
   appId: "1:806926771572:web:960a402ed9a632b4c3b821",
   measurementId: "G-LGFHDQ8YMK"
 };
+
+// Change this
+// const getPlayersCollectionPath = (appId) => `artifacts/${appId}/public/data/players`;
+// to
+// const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
+
 // END DONT DELETE ME
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -15,7 +21,9 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, setLogLevel } from 'firebase/firestore';
 
-// --- Helper Components ---
+const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
+
+// --- Helper Components & Functions ---
 
 // --- Modal Component for Critical Updates ---
 const UpdateModal = ({ update, onClose }) => {
@@ -45,7 +53,6 @@ const UpdateModal = ({ update, onClose }) => {
     );
 };
 
-
 // --- Secure CDC Terminal (Formerly Escape Room App) ---
 
 const puzzles = {
@@ -69,7 +76,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
         if (!db || !isAuthReady) return;
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const playersRef = collection(db, `artifacts/${appId}/players`);
+        const playersRef = collection(db, getPlayersCollectionPath(appId));
         
         const unsubscribe = onSnapshot(playersRef, (snapshot) => {
             const playersData = snapshot.docs.map(doc => doc.data());
@@ -105,6 +112,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
     );
 };
 
+
 const PuzzleAppComponent = () => {
     // Firebase state
     const [db, setDb] = useState(null);
@@ -130,7 +138,7 @@ const PuzzleAppComponent = () => {
     useEffect(() => {
         const initializeFirebase = async () => {
             try {
-                const firebaseConfig = realFirebaseConfig;
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
                 if (!firebaseConfig) { 
                     console.error("Firebase config not found. Please ensure the environment variables are set.");
                     setLoading(false); 
@@ -208,7 +216,7 @@ const PuzzleAppComponent = () => {
         setMessage('');
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const userRef = doc(db, `artifacts/${appId}/players`, formattedUsername);
+            const userRef = doc(db, getPlayersCollectionPath(appId), formattedUsername);
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
                 setCurrentUser(userSnap.data());
@@ -250,7 +258,7 @@ const PuzzleAppComponent = () => {
             const updatedUser = { ...currentUser, score: newScore, completedPuzzles: { ...currentUser.completedPuzzles, [puzzleId]: pointsAwarded }};
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const userRef = doc(db, `artifacts/${appId}/players`, currentUser.name);
+                const userRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
                 await setDoc(userRef, updatedUser);
                 setCurrentUser(updatedUser);
                 setMessage(`Correct. ${pointsAwarded} points awarded.`);
@@ -510,3 +518,4 @@ export default function App() {
         </div>
     );
 }
+

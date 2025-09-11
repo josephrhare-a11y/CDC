@@ -11,8 +11,11 @@ const realFirebaseConfig = {
 
 // Change this
 // const getPlayersCollectionPath = (appId) => `artifacts/${appId}/public/data/players`;
+// const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/public/data/puzzles`;
 // to
 // const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
+// const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/puzzles`;
+// etc
 
 // Change this
 // const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;

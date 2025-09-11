@@ -16,12 +16,14 @@ const realFirebaseConfig = {
 
 // END DONT DELETE ME
 
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, setLogLevel } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, setLogLevel, runTransaction, writeBatch } from 'firebase/firestore';
 
 const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
+const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/puzzles`;
 
 // --- Helper Components & Functions ---
 
@@ -56,15 +58,29 @@ const UpdateModal = ({ update, onClose }) => {
 // --- Secure CDC Terminal (Formerly Escape Room App) ---
 
 const puzzles = {
-    'easy-1': { title: "Nature of the Beast", question: "This pathogen is not truly alive, relying on a host to multiply. What is it?", answer: "virus", hint: "It's the central theme of this global crisis.", points: 5, difficulty: "Easy" },
-    'easy-2': { title: "Scope of the Crisis", question: "What is the term for a disease outbreak that spreads across countries and continents?", answer: "pandemic", hint: "It's more widespread than an epidemic.", points: 5, difficulty: "Easy" },
-    'easy-3': { title: "First Line of Defense", question: "What common medical supply is worn over the face to prevent the spread of airborne pathogens?", answer: "mask", hint: "Often made of paper or cloth.", points: 5, difficulty: "Easy" },
-    'medium-1': { title: "Taming the Enemy", question: "I am the process used to weaken a pathogen to create a vaccine. What am I?", answer: "attenuation", hint: "It's like 'taming' the virus so the body can learn to fight it.", points: 10, difficulty: "Medium" },
-    'medium-2': { title: "The Silent Spreader", question: "What is the name for a carrier of a disease who shows no symptoms?", answer: "asymptomatic", hint: "The 'A' prefix means 'without'.", points: 10, difficulty: "Medium" },
-    'medium-3': { title: "Field of Study", question: "What biological science is dedicated to the study of viruses?", answer: "virology", hint: "It ends with '-ology', meaning 'the study of'.", points: 10, difficulty: "Medium" },
-    'hard-1': { title: "Cellular Target", question: "I am the specific type of cell the C-7 'Cerberus' strain primarily targets in the nervous system. What am I?", answer: "neuron", hint: "These cells are responsible for transmitting nerve impulses.", points: 15, difficulty: "Hard" },
-    'hard-2': { title: "The Final Goal", question: "What is the term for the complete eradication of a disease from the globe?", answer: "eradication", hint: "Think 'to completely get rid of'.", points: 15, difficulty: "Hard" },
-    'hard-3': { title: "The Viral Key", question: "What structure on the surface of a virus allows it to attach to host cells?", answer: "spike protein", hint: "It's a two-word answer, and the first word is a sharp point.", points: 15, difficulty: "Hard" }
+    // Easy Clues (5 Points)
+    'easy-lab': { title: "Basic Contamination", question: "What piece of lab equipment creates a sterile work environment by filtering air?", answer: "laminar flow hood", hint: "It provides a constant flow of clean air.", points: 5, difficulty: "Easy", location: "Laboratory" },
+    'easy-or': { title: "Surgical Tools", question: "What sharp instrument is used for making incisions during surgery?", answer: "scalpel", hint: "It's a small, extremely sharp blade.", points: 5, difficulty: "Easy", location: "Operating Room" },
+    'easy-patient': { title: "Vital Signs", question: "What is the common term for the device with an inflatable cuff used to measure a patient's blood pressure?", answer: "blood pressure cuff", hint: "The medical term is sphygmomanometer.", points: 5, difficulty: "Easy", location: "Patient Room" },
+    'easy-decon': { title: "Neutralizing Agent", question: "What is the process of neutralizing or removing hazardous substances from an area or person?", answer: "decontamination", hint: "The name of the room itself is a clue.", points: 5, difficulty: "Easy", location: "Decontamination Room" },
+    'easy-waste': { title: "Biohazard Color", question: "What color is universally used for bags and containers holding biohazardous waste?", answer: "red", hint: "This color often signifies danger or warning.", points: 5, difficulty: "Easy", location: "Hazardous Waste" },
+    'easy-security': { title: "Agency Acronym", question: "What does the 'C' in 'CDC' stand for?", answer: "centers", hint: "The full name is Centers for Disease Control and Prevention.", points: 5, difficulty: "Easy", location: "Security Office" },
+
+    // Medium Clues (10 Points)
+    'medium-lab': { title: "Genetic Amplification", question: "What technique is used to amplify a small sample of DNA into a larger, testable amount?", answer: "pcr", hint: "Its abbreviation stands for Polymerase Chain Reaction.", points: 10, difficulty: "Medium", location: "Laboratory" },
+    'medium-or': { title: "Maintaining Sterility", question: "What is the name of the machine that uses high-pressure steam to sterilize surgical equipment?", answer: "autoclave", hint: "It's essential for preventing post-surgical infections.", points: 10, difficulty: "Medium", location: "Operating Room" },
+    'medium-patient': { title: "Common Treatment", question: "A dehydrated patient is often given an IV drip containing what simple fluid?", answer: "saline", hint: "It's a solution of salt in sterile water.", points: 10, difficulty: "Medium", location: "Patient Room" },
+    'medium-decon': { title: "Safety Level", question: "What level of biosafety (BSL) is required for working with agents that pose a high risk of aerosol-transmitted infections?", answer: "bsl-4", hint: "It is the highest level of biocontainment.", points: 10, difficulty: "Medium", location: "Decontamination Room" },
+    'medium-waste': { title: "Sterilization Method", question: "What is the primary method for sterilizing and disposing of infectious medical waste to render it safe?", answer: "incineration", hint: "This process involves burning at very high temperatures.", points: 10, difficulty: "Medium", location: "Hazardous Waste" },
+    'medium-security': { title: "Isolation Protocol", question: "What is the term for the isolation of people or animals who have been exposed to a contagious disease?", answer: "quarantine", hint: "It's a key strategy to prevent further spread.", points: 10, difficulty: "Medium", location: "Security Office" },
+    
+    // Hard Clues (20 Points)
+    'hard-lab': { title: "Virus Identification", question: "What laboratory method uses antibodies to detect the presence of a specific antigen in a patient's sample?", answer: "elisa", hint: "This test's abbreviation stands for enzyme-linked immunosorbent assay.", points: 20, difficulty: "Hard", location: "Laboratory" },
+    'hard-or': { title: "Life Support", question: "What machine takes over the function of the heart and lungs during complex open-heart surgery?", answer: "heart-lung machine", hint: "Also known as a cardiopulmonary bypass machine.", points: 20, difficulty: "Hard", location: "Operating Room" },
+    'hard-patient': { title: "Symptom Analysis", question: "What is the medical term for the small, pinpoint red spots on the skin caused by minor bleeding, a key symptom of hemorrhagic fevers?", answer: "petechiae", hint: "This symptom indicates bleeding underneath the skin.", points: 20, difficulty: "Hard", location: "Patient Room" },
+    'hard-decon': { title: "Gaseous Sterilant", question: "What chemical agent is often used in a gaseous state to sterilize entire rooms and sensitive equipment?", answer: "hydrogen peroxide vapor", hint: "It breaks down into water and oxygen, leaving no toxic residue.", points: 20, difficulty: "Hard", location: "Decontamination Room" },
+    'hard-waste': { title: "Needle Disposal", question: "What type of puncture-resistant, sealed container is required for disposing of used needles and scalpels?", answer: "sharps container", hint: "The name describes exactly what it holds.", points: 20, difficulty: "Hard", location: "Hazardous Waste" },
+    'hard-security': { title: "Epidemic Investigation", question: "In pandemic response, what is the term for tracing the contacts of an infected individual to identify others who may be exposed?", answer: "contact tracing", hint: "It's a fundamental public health strategy to control outbreaks.", points: 20, difficulty: "Hard", location: "Security Office" }
 };
 
 const totalPossiblePoints = Object.values(puzzles).reduce((sum, p) => sum + p.points, 0);
@@ -91,7 +107,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
 
     return (
         <div className="mt-4">
-            <h3 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-2">Vaccine Research Leaderboard</h3>
+            <h3 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-2">Current Vaccine Efficacy</h3>
             <div className="space-y-2">
                 {players.map(player => {
                     const progress = (player.score / totalPossiblePoints) * 100;
@@ -113,82 +129,117 @@ const Leaderboard = ({ db, isAuthReady }) => {
 };
 
 const QrLoginComponent = ({ onLogin }) => {
-    const [scriptLoaded, setScriptLoaded] = useState(false);
+    const [jsQrLoaded, setJsQrLoaded] = useState(false);
     const [scanError, setScanError] = useState('');
-    const [isCameraOpen, setIsCameraOpen] = useState(false);
-    const scannerRef = useRef(null);
-    const html5QrCodeRef = useRef(null);
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const streamRef = useRef(null);
 
     useEffect(() => {
-        if (window.Html5Qrcode) {
-            setScriptLoaded(true);
+        const scriptId = "jsqr-script";
+        if (document.getElementById(scriptId) || window.jsQR) {
+            setJsQrLoaded(true);
             return;
         }
+
         const script = document.createElement('script');
-        script.src = "https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js";
+        script.id = scriptId;
+        script.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
         script.async = true;
-        script.onload = () => setScriptLoaded(true);
-        script.onerror = () => setScanError("Could not load QR scanner script.");
+        script.onload = () => setJsQrLoaded(true);
+        script.onerror = () => setScanError("Could not load QR scanner library.");
         document.body.appendChild(script);
 
         return () => {
             if (document.body.contains(script)) {
-                document.body.removeChild(script);
+               document.body.removeChild(script);
             }
         };
     }, []);
 
     useEffect(() => {
-        if (!scriptLoaded || !scannerRef.current || !isCameraOpen) return;
+        let animationFrameId;
 
-        const scannerContainerId = "qr-reader-container";
-        const html5QrCode = new window.Html5Qrcode(scannerContainerId);
-        html5QrCodeRef.current = html5QrCode;
-        
-        let isScanning = true;
+        const tick = () => {
+            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                const canvas = canvasRef.current;
+                const video = videoRef.current;
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-            if (isScanning) {
-                isScanning = false;
-                onLogin(decodedText);
-                 if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-                    html5QrCodeRef.current.stop().catch(err => console.error("Failed to stop scanner post-scan.", err));
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    onLogin(code.data);
+                    if (streamRef.current) {
+                        streamRef.current.getTracks().forEach(track => track.stop());
+                    }
+                    setIsCameraActive(false);
+                    return;
                 }
             }
+            animationFrameId = requestAnimationFrame(tick);
         };
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-            .catch(err => setScanError("Could not start camera. Please grant permissions."));
+
+        if (isCameraActive && jsQrLoaded) {
+             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    streamRef.current = stream;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                        videoRef.current.setAttribute("playsinline", true);
+                        videoRef.current.play();
+                        animationFrameId = requestAnimationFrame(tick);
+                    }
+                })
+                .catch(err => {
+                    setScanError('Could not access camera. Please check browser permissions.');
+                    setIsCameraActive(false);
+                });
+        }
 
         return () => {
-             if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-                html5QrCodeRef.current.stop().catch(err => console.error("Failed to stop scanner on cleanup.", err));
+            cancelAnimationFrame(animationFrameId);
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
         };
-    }, [scriptLoaded, isCameraOpen, onLogin]);
-    
+    }, [isCameraActive, jsQrLoaded, onLogin]);
+
     const handleScanButtonClick = () => {
         setScanError('');
-        setIsCameraOpen(true);
+        if (jsQrLoaded) {
+            setIsCameraActive(true);
+        } else {
+            setScanError("Scanner library not loaded yet. Please wait.");
+        }
     };
-
+    
     return (
-        <div className="w-full max-w-xs aspect-square bg-slate-800 border border-slate-600 flex items-center justify-center">
-            {!isCameraOpen ? (
-                <button onClick={handleScanButtonClick} className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 transition-colors">
+        <div className="w-full max-w-xs aspect-square bg-slate-800 border border-slate-600 flex flex-col items-center justify-center p-4">
+            {!isCameraActive ? (
+                 <button onClick={handleScanButtonClick} className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 transition-colors">
                     Scan Agent ID Badge
                 </button>
             ) : (
-                <>
-                    {!scriptLoaded && !scanError && <p>Loading Scanner...</p>}
-                    {scanError && <p className="text-red-500 text-center p-4">{scanError}</p>}
-                    <div id="qr-reader-container" ref={scannerRef} style={{ width: '100%' }}></div>
-                </>
+                <div className="relative w-full h-full">
+                    <video ref={videoRef} className="absolute top-0 left-0 w-full h-full object-cover"></video>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
+                    <div className="absolute inset-0 border-4 border-red-500/50"></div>
+                </div>
             )}
+             {scanError && <p className="text-red-500 text-center text-sm mt-4">{scanError}</p>}
         </div>
     );
 };
+
 
 const PuzzleAppComponent = () => {
     // Firebase state
@@ -197,11 +248,13 @@ const PuzzleAppComponent = () => {
 
     // App state
     const [currentUser, setCurrentUser] = useState(null);
+    const [usernameInput, setUsernameInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
+    const [puzzleStatuses, setPuzzleStatuses] = useState({});
+    const [loginMode, setLoginMode] = useState('text');
     
     // Puzzle state
-    const [activePuzzle, setActivePuzzle] = useState(null);
     const [puzzleAnswer, setPuzzleAnswer] = useState('');
     const [hintsUsed, setHintsUsed] = useState(0);
 
@@ -250,9 +303,23 @@ const PuzzleAppComponent = () => {
         initializeFirebase();
     }, []);
 
+    // --- Puzzle Status Listener ---
+    useEffect(() => {
+        if (!db || !isAuthReady) return;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const puzzlesRef = collection(db, getPuzzlesCollectionPath(appId));
+        const unsubscribe = onSnapshot(puzzlesRef, (snapshot) => {
+            const statuses = {};
+            snapshot.docs.forEach(doc => {
+                statuses[doc.id] = doc.data();
+            });
+            setPuzzleStatuses(statuses);
+        });
+        return () => unsubscribe();
+    }, [db, isAuthReady]);
+
     const handleLogout = () => {
         setCurrentUser(null);
-        setActivePuzzle(null);
         if (document.hasFocus()) {
              setMessage('Session terminated due to inactivity.');
         }
@@ -283,147 +350,284 @@ const PuzzleAppComponent = () => {
     }, [currentUser]);
 
     const formatUsername = (name) => name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
-    
-    const processLoginAttempt = async (username) => {
+
+    const handleLogin = async (username) => {
         if (!username.trim() || !db) return;
         const formattedUsername = formatUsername(username);
         setLoading(true);
-        setMessage(`QR Code detected. Authenticating Agent ${formattedUsername}...`);
+        setMessage('');
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const userRef = doc(db, getPlayersCollectionPath(appId), formattedUsername);
             const userSnap = await getDoc(userRef);
+            
+            let userData;
             if (userSnap.exists()) {
-                setCurrentUser(userSnap.data());
+                userData = userSnap.data();
                 setMessage(`Welcome back, Agent ${formattedUsername}.`);
             } else {
-                const newUser = { name: formattedUsername, score: 0, completedPuzzles: {} };
-                await setDoc(userRef, newUser);
-                setCurrentUser(newUser);
+                userData = { name: formattedUsername, score: 0, completedPuzzles: {}, reservedPuzzleId: null };
+                await setDoc(userRef, userData);
                 setMessage(`Identity confirmed. Welcome, Agent ${formattedUsername}.`);
             }
+
+            setCurrentUser(userData);
+
         } catch (error) {
             console.error("Error logging in:", error);
             setMessage("Error: Could not access secure database.");
         } finally {
             setLoading(false);
+            setUsernameInput('');
         }
     };
     
-    const handlePuzzleSelect = (puzzleId) => {
-        setActivePuzzle(puzzles[puzzleId]);
-        setPuzzleAnswer('');
-        setHintsUsed(0);
-        setMessage('');
+     const handleTextLoginSubmit = (e) => {
+        e.preventDefault();
+        handleLogin(usernameInput);
     };
     
-    const handleHint = () => {
-        setHintsUsed(prev => prev + 1);
-        setMessage(`Hint Activated: Point value reduced.`);
+    const handlePuzzleSelect = async (puzzleId) => {
+        if (!db || !currentUser || currentUser.reservedPuzzleId) return;
+
+        if (puzzleStatuses[puzzleId]?.reservedBy) {
+            setMessage("Assignment is currently locked by another agent.");
+            return;
+        }
+
+        try {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), puzzleId);
+            const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
+
+            await runTransaction(db, async (transaction) => {
+                const puzzleDoc = await transaction.get(puzzleRef);
+                const puzzleData = puzzleDoc.data() || {};
+
+                if (puzzleData.reservedBy) {
+                    throw new Error("This puzzle is already reserved by another agent.");
+                }
+
+                transaction.set(puzzleRef, { reservedBy: currentUser.name }, { merge: true });
+                transaction.update(playerRef, { reservedPuzzleId: puzzleId });
+            });
+
+            const updatedUser = { ...currentUser, reservedPuzzleId: puzzleId };
+            setCurrentUser(updatedUser);
+            setMessage('');
+
+        } catch (error) {
+            console.error("Error reserving puzzle:", error);
+            setMessage(error.message || "Failed to reserve assignment. It may have been taken.");
+        }
+    };
+    
+    const handleGiveUp = async () => {
+        if (!db || !currentUser || !currentUser.reservedPuzzleId) return;
+        const puzzleId = currentUser.reservedPuzzleId;
+        try {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), puzzleId);
+            const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
+            
+            const batch = writeBatch(db);
+            batch.update(puzzleRef, { reservedBy: null });
+            batch.update(playerRef, { reservedPuzzleId: null });
+            await batch.commit();
+
+            const updatedUser = { ...currentUser, reservedPuzzleId: null };
+            setCurrentUser(updatedUser);
+            setMessage("Assignment aborted. Select a new assignment.");
+        } catch (error) {
+            console.error("Error giving up puzzle:", error);
+            setMessage("Error releasing assignment. Please try again.");
+        }
     };
 
     const handlePuzzleSubmit = async (e) => {
         e.preventDefault();
+        const activePuzzleId = currentUser?.reservedPuzzleId;
+        const activePuzzle = activePuzzleId ? puzzles[activePuzzleId] : null;
+
         if (!puzzleAnswer.trim() || !currentUser || !activePuzzle) return;
+
         if (puzzleAnswer.toLowerCase() === activePuzzle.answer) {
             const pointsAwarded = Math.max(0, activePuzzle.points - hintsUsed);
             const newScore = currentUser.score + pointsAwarded;
-            const puzzleId = Object.keys(puzzles).find(key => puzzles[key] === activePuzzle);
-            const updatedUser = { ...currentUser, score: newScore, completedPuzzles: { ...currentUser.completedPuzzles, [puzzleId]: pointsAwarded }};
+            
+            const updatedUser = { 
+                ...currentUser, 
+                score: newScore, 
+                completedPuzzles: { ...currentUser.completedPuzzles, [activePuzzleId]: pointsAwarded },
+                reservedPuzzleId: null 
+            };
+
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const userRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
-                await setDoc(userRef, updatedUser);
+                const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
+                const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), activePuzzleId);
+                
+                const batch = writeBatch(db);
+                batch.update(puzzleRef, { reservedBy: null });
+                batch.set(playerRef, updatedUser);
+                await batch.commit();
+                
                 setCurrentUser(updatedUser);
                 setMessage(`Correct. ${pointsAwarded} points awarded.`);
             } catch (error) {
                 console.error("Error updating score:", error);
                 setMessage("Error: Could not save progress.");
             }
-            setActivePuzzle(null);
         } else {
             setMessage("Incorrect. Try again.");
         }
         setPuzzleAnswer('');
+        setHintsUsed(0);
     };
 
     const LoggedInHeader = () => (
         <div className="flex justify-between items-center mb-4 text-sm">
             <div>
-                <p>Agent: <span className="text-yellow-400 font-bold">{currentUser.name}</span></p>
-                <p>Score: <span className="text-yellow-400 font-bold">{currentUser.score}</span></p>
+                <p>Agent: <span className="font-bold text-yellow-400">{currentUser.name}</span></p>
+                <p>Score: <span className="font-bold text-yellow-400">{currentUser.score}</span></p>
             </div>
             <div className="text-center">
                  <p className="text-xs text-slate-400">Session ends in:</p>
-                 <p className="font-semibold text-lg text-slate-300">{countdown}s</p>
+                 <p className="text-lg font-semibold text-slate-300">{countdown}s</p>
             </div>
-            <button onClick={handleLogout} className="bg-slate-600 hover:bg-slate-700 text-white font-bold py-1 px-3 text-sm transition-colors">Log Off</button>
+            <button onClick={handleLogout} className="px-3 py-1 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Log Off</button>
         </div>
     );
 
     const renderContent = () => {
-        if (loading && !currentUser) return <div className="text-center text-sky-300">Initializing Secure Terminal...</div>;
+        if (loading) return <div className="text-center text-sky-300">Initializing Secure Terminal...</div>;
 
         if (!currentUser) {
             return (
                 <div className="flex flex-col h-full">
-                    <div className="flex flex-col gap-4 items-center justify-center flex-shrink-0">
-                        <p className="text-center text-base">Scan Agent ID</p>
-                        <QrLoginComponent onLogin={processLoginAttempt} />
-                        {message && <p className="text-yellow-400 mt-4 text-sm text-center">{message}</p>}
+                    <div className="flex flex-col items-center justify-center flex-shrink-0 gap-4">
+                        <div className="flex gap-2 mb-4">
+                            <button onClick={() => setLoginMode('text')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'text' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Use Codename</button>
+                            <button onClick={() => setLoginMode('qr')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'qr' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Scan ID</button>
+                        </div>
+
+                        {loginMode === 'text' ? (
+                            <form onSubmit={handleTextLoginSubmit} className="flex flex-col gap-4 items-center w-full">
+                                <p className="text-center text-base">Agent Login</p>
+                                <input type="text" placeholder="Enter Codename" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="bg-slate-800 border border-slate-600 rounded-none p-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 w-full max-w-xs transition-colors">Access Terminal</button>
+                            </form>
+                        ) : (
+                            <QrLoginComponent onLogin={handleLogin} />
+                        )}
+                        
+                        {message && <p className="mt-4 text-sm text-center text-yellow-400">{message}</p>}
                     </div>
-                    <div className="flex-grow overflow-y-auto mt-4 pr-2">
+                    <div className="flex-grow mt-4 pr-2 overflow-y-auto">
                         {isAuthReady && <Leaderboard db={db} isAuthReady={isAuthReady} />}
                     </div>
                 </div>
             );
         }
+        
+        const activePuzzleId = currentUser.reservedPuzzleId;
+        const activePuzzle = activePuzzleId ? puzzles[activePuzzleId] : null;
 
         if (activePuzzle) {
             const potentialPoints = activePuzzle.points - hintsUsed;
             return (
                 <div className="flex flex-col h-full">
                     <LoggedInHeader />
-                    <div className="flex flex-col gap-4 h-full flex-grow">
+                    <div className="flex flex-col flex-grow h-full gap-4">
                         <div className="flex-grow">
-                            <p className="text-base text-yellow-400">{activePuzzle.difficulty} Assignment ({potentialPoints} Points)</p>
-                            <p className="mt-2 text-lg">{activePuzzle.question}</p>
+                            <h3 className="text-xl font-bold text-slate-100">{activePuzzle.title}</h3>
+                             <div className="flex gap-4 text-sm text-slate-400 mt-1 border-b border-slate-700 pb-2 mb-4">
+                                <span>Location: <span className="font-semibold text-slate-300">{activePuzzle.location}</span></span>
+                                <span>Difficulty: <span className="font-semibold text-slate-300">{activePuzzle.difficulty}</span></span>
+                                <span>Value: <span className="font-semibold text-yellow-400">{potentialPoints} pts</span></span>
+                            </div>
+                            <p className="text-lg">{activePuzzle.question}</p>
                             {hintsUsed > 0 && <p className="mt-4 text-cyan-400">Intel: {activePuzzle.hint}</p>}
                         </div>
-                        {message && <p className="text-yellow-400 text-center text-sm">{message}</p>}
+                        {message && <p className="text-sm text-center text-yellow-400">{message}</p>}
                         <form onSubmit={handlePuzzleSubmit} className="flex gap-2">
-                            <input type="text" placeholder="Enter answer..." value={puzzleAnswer} onChange={(e) => setPuzzleAnswer(e.target.value)} className="flex-grow bg-slate-800 border border-slate-600 p-2 focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                            <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 transition-colors">Submit</button>
+                            <input type="text" placeholder="Enter answer..." value={puzzleAnswer} onChange={(e) => setPuzzleAnswer(e.target.value)} className="flex-grow p-2 border bg-slate-800 border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                            <button type="submit" className="px-4 py-2 font-bold text-white transition-colors bg-sky-600 hover:bg-sky-700">Submit</button>
                         </form>
                         <div className="flex gap-2">
-                            <button onClick={handleHint} disabled={hintsUsed > 0} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 transition-colors disabled:bg-slate-500 text-sm">Request Intel (-1 Pt)</button>
-                            <button onClick={() => setActivePuzzle(null)} className="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 transition-colors text-sm">Abort Assignment</button>
+                            <button onClick={() => setHintsUsed(prev => prev + 1)} disabled={hintsUsed > 0} className="px-4 py-2 text-sm font-bold text-white transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500">Request Intel (-1 Pt)</button>
+                            <button onClick={handleGiveUp} className="px-4 py-2 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Abort Assignment</button>
                         </div>
                     </div>
                 </div>
             );
         }
 
+        const locations = ["Laboratory", "Operating Room", "Patient Room", "Decontamination Room", "Hazardous Waste", "Security Office"];
+        const difficultiesOrder = { Easy: 1, Medium: 2, Hard: 3 };
+
+        const getDifficultyColor = (difficulty) => {
+            if (difficulty === 'Easy') return 'bg-green-700/50 hover:bg-green-600/50';
+            if (difficulty === 'Medium') return 'bg-yellow-700/50 hover:bg-yellow-600/50';
+            if (difficulty === 'Hard') return 'bg-red-700/50 hover:bg-red-600/50';
+            return 'bg-slate-800/50 hover:bg-slate-700/70';
+        };
+
         return (
             <div className="flex flex-col h-full">
                 <LoggedInHeader />
-                {message && <p className="text-yellow-400 text-center mb-2 text-sm">{message}</p>}
-                <div className="space-y-2 flex-grow overflow-y-auto pr-2">
-                    {['Easy', 'Medium', 'Hard'].map(difficulty => (
-                        <div key={difficulty}>
-                            <h3 className="text-sm font-bold text-slate-400">{difficulty} Assignments</h3>
-                            {Object.entries(puzzles).filter(([_, p]) => p.difficulty === difficulty).map(([id, puzzle]) => {
-                                const isCompleted = id in currentUser.completedPuzzles;
-                                const pointsWon = currentUser.completedPuzzles[id];
-                                return (
-                                    <button key={id} onClick={() => handlePuzzleSelect(id)} disabled={isCompleted} className="w-full text-left p-3 my-1 transition-colors bg-slate-800/50 hover:bg-slate-700/70 disabled:bg-green-900/50 disabled:cursor-not-allowed">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span>{puzzle.title}</span>
-                                            {isCompleted ? <span className="text-green-400 font-bold">COMPLETED (+{pointsWon} pts)</span> : <span className="text-yellow-400">{puzzle.points} Points</span>}
-                                        </div>
-                                    </button>
-                                );
-                            })}
+                {message && <p className="mb-2 text-sm text-center text-yellow-400">{message}</p>}
+                <div className="flex-grow pr-2 overflow-y-auto space-y-3">
+                    {locations.map(location => (
+                        <div key={location}>
+                            <h3 className="mb-1 text-sm font-bold text-sky-400">{location}</h3>
+                            <div className="grid grid-cols-3 gap-2">
+                                {Object.entries(puzzles)
+                                    .filter(([, p]) => p.location === location)
+                                    .sort(([, a], [, b]) => difficultiesOrder[a.difficulty] - difficultiesOrder[b.difficulty])
+                                    .map(([id, puzzle]) => {
+                                        const isCompleted = id in currentUser.completedPuzzles;
+                                        const reservationStatus = puzzleStatuses[id];
+                                        const isReservedByOther = reservationStatus && reservationStatus.reservedBy && reservationStatus.reservedBy !== currentUser.name;
+                                        const isDisabled = isCompleted || isReservedByOther || currentUser.reservedPuzzleId;
+
+                                        let buttonClass;
+                                        if (isCompleted) {
+                                            buttonClass = 'bg-green-900/50';
+                                        } else if (isDisabled) {
+                                            buttonClass = 'bg-slate-800/30 text-slate-500';
+                                        } else {
+                                            buttonClass = getDifficultyColor(puzzle.difficulty);
+                                        }
+                                        
+                                        return (
+                                            <button 
+                                                key={id} 
+                                                onClick={() => handlePuzzleSelect(id)} 
+                                                disabled={isDisabled} 
+                                                className={`relative flex flex-col items-center justify-center p-1 text-center text-white transition-colors rounded-lg ${buttonClass} disabled:cursor-not-allowed overflow-hidden h-20`}
+                                            >
+                                                {isCompleted ? (
+                                                    <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                                ) : (
+                                                    <>
+                                                        {isReservedByOther && (
+                                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                <span className="text-xl font-black transform -rotate-12 select-none text-slate-500/40">
+                                                                    {reservationStatus.reservedBy}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <div className={`flex flex-col transition-opacity ${isReservedByOther ? 'opacity-30' : ''}`}>
+                                                             <span className="text-xs font-bold uppercase text-slate-400">{puzzle.difficulty}</span>
+                                                             <span className="text-lg font-bold text-yellow-400">{puzzle.points} PTS</span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </button>
+                                        );
+                                })}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -432,9 +636,9 @@ const PuzzleAppComponent = () => {
     };
 
     return (
-        <div className="bg-slate-900 border border-slate-700 p-4 h-full flex flex-col text-slate-200">
-            <h2 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-4 flex-shrink-0">SECURE CDC TERMINAL</h2>
-            <div className="flex-grow overflow-y-auto pr-2">
+        <div className="flex flex-col h-full p-4 text-slate-200 border bg-slate-900 border-slate-700">
+            <h2 className="flex-shrink-0 pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">SECURE CDC TERMINAL</h2>
+            <div className="flex-grow pr-2">
                 {renderContent()}
             </div>
         </div>
@@ -445,16 +649,16 @@ const PuzzleAppComponent = () => {
 
 export default function App() {
     const initialCountryData = useMemo(() => [
-        { name: "United States", flag: "🇺🇸", infected: 425000000, deaths: 106250000 },
-        { name: "India", flag: "🇮🇳", infected: 215000000, deaths: 53750000 },
-        { name: "Brazil", flag: "🇧🇷", infected: 155000000, deaths: 38750000 },
-        { name: "France", flag: "🇫🇷", infected: 150000000, deaths: 37500000 },
-        { name: "Germany", flag: "🇩🇪", infected: 135000000, deaths: 33750000 },
-        { name: "United Kingdom", flag: "🇬🇧", infected: 110000000, deaths: 27500000 },
-        { name: "Russia", flag: "🇷🇺", infected: 90000000, deaths: 22500000 },
-        { name: "South Korea", flag: "🇰🇷", infected: 90000000, deaths: 22500000 },
-        { name: "Italy", flag: "🇮🇹", infected: 85000000, deaths: 21250000 },
-        { name: "Japan", flag: "🇯🇵", infected: 45000000, deaths: 11250000 }
+        { name: "United States", flag: "🇺🇸", infected: 425384192, deaths: 106192843 },
+        { name: "India", flag: "🇮🇳", infected: 215721834, deaths: 53912477 },
+        { name: "Brazil", flag: "🇧🇷", infected: 155109283, deaths: 38945102 },
+        { name: "France", flag: "🇫🇷", infected: 150058219, deaths: 37512993 },
+        { name: "Germany", flag: "🇩🇪", infected: 135873401, deaths: 33991284 },
+        { name: "United Kingdom", flag: "🇬🇧", infected: 110432188, deaths: 27601923 },
+        { name: "Russia", flag: "🇷🇺", infected: 90123456, deaths: 22598741 },
+        { name: "South Korea", flag: "🇰🇷", infected: 89987654, deaths: 22487192 },
+        { name: "Italy", flag: "🇮🇹", infected: 85321987, deaths: 21330182 },
+        { name: "Japan", flag: "🇯🇵", infected: 45019876, deaths: 11255432 }
     ], []);
 
     const tickerMessagesPool = useMemo(() => [
@@ -520,21 +724,21 @@ export default function App() {
     const getTickerTypeColor = (type) => ({ 'HOTSPOT': 'text-red-400', 'MUTATION': 'text-yellow-400', 'VACCINE': 'text-blue-400' }[type] || 'text-slate-300');
     
     return (
-        <div className="text-slate-200 min-h-screen p-2 sm:p-4 font-sans bg-slate-800">
+        <div className="p-2 font-sans text-slate-200 min-h-screen sm:p-4 bg-slate-800">
             <div className="w-full max-w-screen-2xl mx-auto">
-                <header className="flex justify-between items-center mb-4 text-white">
-                    <h1 className="text-2xl md:text-3xl font-bold">CORONAVIRUS RESOURCE CENTER</h1>
+                <header className="flex items-center justify-between mb-4 text-white">
+                    <h1 className="text-2xl font-bold md:text-3xl">CORONAVIRUS RESOURCE CENTER</h1>
                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/US_CDC_logo.svg/2560px-US_CDC_logo.svg.png" alt="CDC Logo" className="h-8"/>
                 </header>
 
-                <main className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    <aside className="lg:col-span-3 bg-slate-900 p-4 h-[60vh] lg:h-[80vh] flex flex-col">
-                        <h2 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-4">Confirmed Cases by Country</h2>
-                        <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
+                <main className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900 h-[60vh] lg:h-[80vh]">
+                        <h2 className="pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Confirmed Cases by Country</h2>
+                        <div className="flex-grow pr-2 overflow-y-auto space-y-4">
                             {countryData.map(country => (
-                                <div key={country.name} className="text-sm bg-slate-800/50 p-2">
+                                <div key={country.name} className="p-2 text-sm bg-slate-800/50">
                                      <div className="flex items-center mb-2">
-                                        <span className="text-lg mr-2">{country.flag}</span>
+                                        <span className="mr-2 text-lg">{country.flag}</span>
                                         <span className="font-semibold truncate">{country.name}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -556,26 +760,26 @@ export default function App() {
                         <PuzzleAppComponent />
                     </section>
 
-                    <aside className="lg:col-span-3 bg-slate-900 p-4 h-[60vh] lg:h-[80vh] flex flex-col">
+                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900 h-[60vh] lg:h-[80vh]">
                         <div className="flex-shrink-0">
-                            <h2 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-4">Global Status</h2>
-                            <div className="text-center mb-4">
+                            <h2 className="pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Global Status</h2>
+                            <div className="mb-4 text-center">
                                 <p className="text-lg text-slate-400">Total Confirmed</p>
-                                <p className="text-4xl lg:text-5xl font-bold text-red-500">{formatNumber(globalInfected)}</p>
+                                <p className="text-4xl font-bold text-red-500 lg:text-5xl">{formatNumber(globalInfected)}</p>
                             </div>
                              <div className="text-center">
                                 <p className="text-lg text-slate-400">Total Deaths</p>
-                                <p className="text-4xl lg:text-5xl font-bold text-slate-200">{formatNumber(globalDeaths)}</p>
+                                <p className="text-4xl font-bold text-slate-200 lg:text-5xl">{formatNumber(globalDeaths)}</p>
                             </div>
                         </div>
                         
-                        <div className="mt-6 flex-grow flex flex-col overflow-hidden">
-                            <h2 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-4 flex-shrink-0">Critical Updates</h2>
-                            <div className="space-y-3 overflow-y-auto pr-2 flex-grow">
+                        <div className="flex flex-col flex-grow mt-6 overflow-hidden">
+                            <h2 className="flex-shrink-0 pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Critical Updates</h2>
+                            <div className="flex-grow pr-2 overflow-y-auto space-y-3">
                                 {tickerFeed.map((item, index) => (
                                     <button 
                                         key={index} 
-                                        className="w-full text-left bg-slate-800/50 p-2 text-sm hover:bg-slate-700/50 transition-colors"
+                                        className="w-full p-2 text-sm text-left transition-colors bg-slate-800/50 hover:bg-slate-700/50"
                                         onClick={() => setSelectedUpdate(item)}
                                     >
                                         <p className="text-xs text-slate-400">{item.timestamp} UTC</p>

@@ -267,7 +267,7 @@ const PuzzleAppComponent = () => {
     useEffect(() => {
         const initializeFirebase = async () => {
             try {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const firebaseConfig = realFirebaseConfig;
                 if (!firebaseConfig) { 
                     console.error("Firebase config not found. Please ensure the environment variables are set.");
                     setLoading(false); 

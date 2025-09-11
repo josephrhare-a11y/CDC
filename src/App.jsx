@@ -732,6 +732,15 @@ export default function App() {
     const getTickerTypeColor = (type) => ({ 'HOTSPOT': 'text-red-400', 'MUTATION': 'text-yellow-400', 'VACCINE': 'text-blue-400' }[type] || 'text-slate-300');
     
     return (
+         <div 
+            className="relative p-2 font-sans text-slate-200 min-h-screen sm:p-4"
+            style={{
+                backgroundImage: `url('https://static01.nyt.com/newsgraphics/2021/coronavirus-tracking/images/maps/NYT-World/cases.png')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed',
+            }}
+        >
         <div className="p-2 font-sans text-slate-200 min-h-screen sm:p-4 bg-slate-800">
             <div className="w-full max-w-screen-2xl mx-auto">
                 <header className="flex items-center justify-between mb-4 text-white">

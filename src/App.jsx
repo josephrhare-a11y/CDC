@@ -14,6 +14,11 @@ const realFirebaseConfig = {
 // to
 // const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
 
+// Change this
+// const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+// to
+// const firebaseConfig = realFirebaseConfig;
+
 // END DONT DELETE ME
 
 

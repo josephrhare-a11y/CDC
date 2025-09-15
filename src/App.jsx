@@ -24,14 +24,13 @@ const realFirebaseConfig = {
 
 // END DONT DELETE ME
 
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, setLogLevel, runTransaction, writeBatch } from 'firebase/firestore';
 
-const getPlayersCollectionPath = (appId) => `artifacts/${appId}/public/data/players`;
-const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/public/data/puzzles`;
+const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
+const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/puzzles`;
 
 // --- Helper Components & Functions ---
 
@@ -148,10 +147,10 @@ const Leaderboard = ({ db, isAuthReady }) => {
 const QrLoginComponent = ({ onLogin }) => {
     const [jsQrLoaded, setJsQrLoaded] = useState(false);
     const [scanError, setScanError] = useState('');
+    const [isCameraActive, setIsCameraActive] = useState(false);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
-    const animationFrameId = useRef(null);
 
     useEffect(() => {
         const scriptId = "jsqr-script";
@@ -175,74 +174,87 @@ const QrLoginComponent = ({ onLogin }) => {
         };
     }, []);
 
-    const tick = () => {
-        if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-            const canvas = canvasRef.current;
-            const video = videoRef.current;
-            const ctx = canvas.getContext("2d");
-
-            canvas.height = video.videoHeight;
-            canvas.width = video.videoWidth;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-                inversionAttempts: "dontInvert",
-            });
-
-            if (code && code.data) {
-                onLogin(code.data);
-                if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop());
-                }
-                return; 
-            }
-        }
-        animationFrameId.current = requestAnimationFrame(tick);
-    };
-
-    const startScanner = async () => {
-        if (!jsQrLoaded) {
-            setScanError("Scanner library not yet loaded.");
-            return;
-        }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.setAttribute("playsinline", true);
-                videoRef.current.play();
-                animationFrameId.current = requestAnimationFrame(tick);
-            }
-        } catch (err) {
-            setScanError('Could not access camera. Please check browser permissions.');
-        }
-    };
-
     useEffect(() => {
-        startScanner();
+        let animationFrameId;
+
+        const tick = () => {
+            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                const canvas = canvasRef.current;
+                const video = videoRef.current;
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    onLogin(code.data);
+                    if (streamRef.current) {
+                        streamRef.current.getTracks().forEach(track => track.stop());
+                    }
+                    setIsCameraActive(false);
+                    return;
+                }
+            }
+            animationFrameId = requestAnimationFrame(tick);
+        };
+
+        if (isCameraActive && jsQrLoaded) {
+             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    streamRef.current = stream;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                        videoRef.current.setAttribute("playsinline", true);
+                        videoRef.current.play();
+                        animationFrameId = requestAnimationFrame(tick);
+                    }
+                })
+                .catch(err => {
+                    setScanError('Could not access camera. Please check browser permissions.');
+                    setIsCameraActive(false);
+                });
+        }
+
         return () => {
-            cancelAnimationFrame(animationFrameId.current);
+            cancelAnimationFrame(animationFrameId);
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
         };
-    }, [jsQrLoaded]);
+    }, [isCameraActive, jsQrLoaded, onLogin]);
 
+    const handleScanButtonClick = () => {
+        setScanError('');
+        if (jsQrLoaded) {
+            setIsCameraActive(true);
+        } else {
+            setScanError("Scanner library not loaded yet. Please wait.");
+        }
+    };
+    
     return (
         <div className="w-full max-w-xs aspect-square bg-slate-800 border border-slate-600 flex flex-col items-center justify-center p-4">
-            <div className="relative w-full h-full">
-                <video ref={videoRef} className="absolute top-0 left-0 w-full h-full object-cover"></video>
-                <canvas ref={canvasRef} className="hidden"></canvas>
-                <div className="absolute inset-0 border-4 border-red-500/50"></div>
-                 {!scanError && <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white text-xs bg-black/50 px-2 py-1">Scanning for Agent ID...</p>}
-            </div>
+            {!isCameraActive ? (
+                 <button onClick={handleScanButtonClick} className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 transition-colors">
+                    Scan Agent ID Badge
+                </button>
+            ) : (
+                <div className="relative w-full h-full">
+                    <video ref={videoRef} className="absolute top-0 left-0 w-full h-full object-cover"></video>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
+                    <div className="absolute inset-0 border-4 border-red-500/50"></div>
+                </div>
+            )}
              {scanError && <p className="text-red-500 text-center text-sm mt-4">{scanError}</p>}
         </div>
     );
 };
-
 
 const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) => {
     // App state
@@ -352,7 +364,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
         e.preventDefault();
         handleLogin(usernameInput);
     };
-    
+
     const handlePuzzleSelect = async (puzzleId) => {
         if (!db || !currentUser || currentUser.reservedPuzzleId) return;
 
@@ -631,7 +643,7 @@ export default function App() {
     useEffect(() => {
         const initializeFirebase = async () => {
             try {
-               const firebaseConfig = realFirebaseConfig;
+                const firebaseConfig = realFirebaseConfig: null;
                 if (!firebaseConfig) { 
                     console.error("Firebase config not found. Please ensure the environment variables are set.");
                     return; 
@@ -834,5 +846,3 @@ export default function App() {
         </div>
     );
 }
-
-

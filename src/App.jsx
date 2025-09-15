@@ -24,7 +24,6 @@ const realFirebaseConfig = {
 
 // END DONT DELETE ME
 
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -43,11 +42,11 @@ const UpdateModal = ({ update, onClose }) => {
 
     return (
         <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={onClose}
         >
             <div 
-                className="bg-slate-900 border border-slate-700 p-6 max-w-2xl w-full m-4"
+                className="bg-slate-900/90 border border-slate-700 p-6 max-w-2xl w-full m-4"
                 onClick={e => e.stopPropagation()} // Prevent closing when clicking inside the modal
             >
                 <div className="flex justify-between items-start">
@@ -62,6 +61,15 @@ const UpdateModal = ({ update, onClose }) => {
         </div>
     );
 };
+
+// --- Spinner Component ---
+const Spinner = () => (
+    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
 
 // --- Secure CDC Terminal (Formerly Escape Room App) ---
 
@@ -114,9 +122,9 @@ const Leaderboard = ({ db, isAuthReady }) => {
     }, [db, isAuthReady]);
 
     return (
-        <div className="mt-4">
-            <h3 className="text-base font-bold text-sky-400 border-b border-sky-400/30 pb-2 mb-2">Current Vaccine Efficacy</h3>
-            <div className="space-y-2">
+        <div className="flex flex-col h-full p-4 text-slate-200 bg-slate-900/70">
+            <h3 className="flex-shrink-0 pb-2 mb-2 text-base font-bold text-sky-400 border-b border-sky-400/30">Current Vaccine Efficacy</h3>
+            <div className="flex-grow pr-2 -mr-2 overflow-y-auto space-y-2">
                 {players.map(player => {
                     const progress = (player.score / totalPossiblePoints) * 100;
                     return (
@@ -248,16 +256,12 @@ const QrLoginComponent = ({ onLogin }) => {
     );
 };
 
-
-const PuzzleAppComponent = () => {
-    // Firebase state
-    const [db, setDb] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
-
+const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) => {
     // App state
-    const [currentUser, setCurrentUser] = useState(null);
     const [usernameInput, setUsernameInput] = useState('');
     const [loading, setLoading] = useState(true);
+    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [loadingPuzzleId, setLoadingPuzzleId] = useState(null);
     const [message, setMessage] = useState('');
     const [puzzleStatuses, setPuzzleStatuses] = useState({});
     const [loginMode, setLoginMode] = useState('text');
@@ -271,45 +275,14 @@ const PuzzleAppComponent = () => {
     const inactivityTimerRef = useRef(null);
     const countdownIntervalRef = useRef(null);
 
-    // --- Firebase Initialization ---
     useEffect(() => {
-        const initializeFirebase = async () => {
-            try {
-                const firebaseConfig = realFirebaseConfig;
-                if (!firebaseConfig) { 
-                    console.error("Firebase config not found. Please ensure the environment variables are set.");
-                    setLoading(false); 
-                    return; 
-                }
-                const app = initializeApp(firebaseConfig);
-                const firestore = getFirestore(app);
-                const authInstance = getAuth(app);
-                setDb(firestore);
-                setLogLevel('debug');
-                
-                onAuthStateChanged(authInstance, async (user) => {
-                    if (!user) {
-                        try {
-                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                            if (token) { 
-                                await signInWithCustomToken(authInstance, token); 
-                            } else { 
-                                await signInAnonymously(authInstance); 
-                            }
-                        } catch (authError) {
-                            console.error("Firebase Auth Error:", authError);
-                        }
-                    }
-                    setIsAuthReady(true);
-                    setLoading(false);
-                });
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                setLoading(false);
-            }
-        };
-        initializeFirebase();
-    }, []);
+        if(!isAuthReady) {
+            setLoading(true);
+        } else {
+            setLoading(false);
+        }
+    },[isAuthReady]);
+
 
     // --- Puzzle Status Listener ---
     useEffect(() => {
@@ -328,9 +301,7 @@ const PuzzleAppComponent = () => {
 
     const handleLogout = () => {
         setCurrentUser(null);
-        if (document.hasFocus()) {
-             setMessage('Session terminated due to inactivity.');
-        }
+        setMessage('Session terminated.');
     };
     
     // --- Inactivity Timer Logic ---
@@ -362,8 +333,7 @@ const PuzzleAppComponent = () => {
     const handleLogin = async (username) => {
         if (!username.trim() || !db) return;
         const formattedUsername = formatUsername(username);
-        setLoading(true);
-        setMessage('');
+        setIsActionLoading(true);
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const userRef = doc(db, getPlayersCollectionPath(appId), formattedUsername);
@@ -385,16 +355,16 @@ const PuzzleAppComponent = () => {
             console.error("Error logging in:", error);
             setMessage("Error: Could not access secure database.");
         } finally {
-            setLoading(false);
+            setIsActionLoading(false);
             setUsernameInput('');
         }
     };
     
-     const handleTextLoginSubmit = (e) => {
+    const handleTextLoginSubmit = (e) => {
         e.preventDefault();
         handleLogin(usernameInput);
     };
-    
+
     const handlePuzzleSelect = async (puzzleId) => {
         if (!db || !currentUser || currentUser.reservedPuzzleId) return;
 
@@ -402,7 +372,7 @@ const PuzzleAppComponent = () => {
             setMessage("Assignment is currently locked by another agent.");
             return;
         }
-
+        setLoadingPuzzleId(puzzleId);
         try {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), puzzleId);
@@ -422,11 +392,12 @@ const PuzzleAppComponent = () => {
 
             const updatedUser = { ...currentUser, reservedPuzzleId: puzzleId };
             setCurrentUser(updatedUser);
-            setMessage('');
 
         } catch (error) {
             console.error("Error reserving puzzle:", error);
             setMessage(error.message || "Failed to reserve assignment. It may have been taken.");
+        } finally {
+            setLoadingPuzzleId(null);
         }
     };
     
@@ -493,47 +464,56 @@ const PuzzleAppComponent = () => {
         setHintsUsed(0);
     };
 
-    const LoggedInHeader = () => (
-        <div className="flex justify-between items-center mb-4 text-sm">
-            <div>
-                <p>Agent: <span className="font-bold text-yellow-400">{currentUser.name}</span></p>
-                <p>Score: <span className="font-bold text-yellow-400">{currentUser.score}</span></p>
+    const LoggedInHeader = () => {
+        const progress = (currentUser.score / totalPossiblePoints) * 100;
+
+        return (
+            <div className="mb-4">
+                <div className="flex justify-between items-center text-sm">
+                    <div>
+                        <p>Agent: <span className="font-bold text-yellow-400">{currentUser.name}</span></p>
+                        <p>Score: <span className="font-bold text-yellow-400">{currentUser.score}</span></p>
+                    </div>
+                    <div className="text-center">
+                         <p className="text-xs text-slate-400">Session ends in:</p>
+                         <p className="text-lg font-semibold text-slate-300">{countdown}s</p>
+                    </div>
+                    <button onClick={handleLogout} className="px-3 py-1 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Log Off</button>
+                </div>
+                <div className="mt-2">
+                    <div className="w-full bg-slate-700 h-2.5">
+                        <div className="bg-yellow-500 h-2.5" style={{ width: `${progress}%` }}></div>
+                    </div>
+                     <p className="text-right text-xs text-slate-400 mt-1">{progress.toFixed(1)}% Vaccine Research Complete</p>
+                </div>
             </div>
-            <div className="text-center">
-                 <p className="text-xs text-slate-400">Session ends in:</p>
-                 <p className="text-lg font-semibold text-slate-300">{countdown}s</p>
-            </div>
-            <button onClick={handleLogout} className="px-3 py-1 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Log Off</button>
-        </div>
-    );
+        );
+    };
 
     const renderContent = () => {
         if (loading) return <div className="text-center text-sky-300">Initializing Secure Terminal...</div>;
 
         if (!currentUser) {
             return (
-                <div className="flex flex-col h-full">
-                    <div className="flex flex-col items-center justify-center flex-shrink-0 gap-4">
-                        <div className="flex gap-2 mb-4">
-                            <button onClick={() => setLoginMode('text')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'text' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Use Codename</button>
-                            <button onClick={() => setLoginMode('qr')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'qr' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Scan ID</button>
-                        </div>
+                 <div className="flex flex-col items-center justify-center h-full">
+                     <div className="flex gap-2 mb-4">
+                        <button onClick={() => setLoginMode('text')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'text' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Use Codename</button>
+                        <button onClick={() => setLoginMode('qr')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'qr' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Scan ID</button>
+                    </div>
 
-                        {loginMode === 'text' ? (
-                            <form onSubmit={handleTextLoginSubmit} className="flex flex-col gap-4 items-center w-full">
-                                <p className="text-center text-base">Agent Login</p>
-                                <input type="text" placeholder="Enter Codename" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="bg-slate-800 border border-slate-600 rounded-none p-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 w-full max-w-xs transition-colors">Access Terminal</button>
-                            </form>
-                        ) : (
-                            <QrLoginComponent onLogin={handleLogin} />
-                        )}
-                        
-                        {message && <p className="mt-4 text-sm text-center text-yellow-400">{message}</p>}
-                    </div>
-                    <div className="flex-grow mt-4 pr-2 overflow-y-auto">
-                        {isAuthReady && <Leaderboard db={db} isAuthReady={isAuthReady} />}
-                    </div>
+                    {loginMode === 'text' ? (
+                        <form onSubmit={handleTextLoginSubmit} className="flex flex-col gap-4 items-center w-full">
+                            <p className="text-center text-base">Agent Login</p>
+                            <input type="text" placeholder="Enter Codename" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="bg-slate-800 border border-slate-600 rounded-none p-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                            <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 w-full max-w-xs transition-colors" disabled={isActionLoading}>
+                                {isActionLoading ? <Spinner/> : 'Access Terminal'}
+                            </button>
+                        </form>
+                    ) : (
+                        <QrLoginComponent onLogin={handleLogin} />
+                    )}
+                    
+                    {message && <p className="mt-4 text-sm text-center text-yellow-400">{message}</p>}
                 </div>
             );
         }
@@ -542,7 +522,6 @@ const PuzzleAppComponent = () => {
         const activePuzzle = activePuzzleId ? puzzles[activePuzzleId] : null;
 
         if (activePuzzle) {
-            const potentialPoints = activePuzzle.points - hintsUsed;
             return (
                 <div className="flex flex-col h-full">
                     <LoggedInHeader />
@@ -552,7 +531,7 @@ const PuzzleAppComponent = () => {
                              <div className="flex gap-4 text-sm text-slate-400 mt-1 border-b border-slate-700 pb-2 mb-4">
                                 <span>Location: <span className="font-semibold text-slate-300">{activePuzzle.location}</span></span>
                                 <span>Difficulty: <span className="font-semibold text-slate-300">{activePuzzle.difficulty}</span></span>
-                                <span>Value: <span className="font-semibold text-yellow-400">{potentialPoints} pts</span></span>
+                                <span>Value: <span className="font-semibold text-yellow-400">{activePuzzle.points - hintsUsed} pts</span></span>
                             </div>
                             <p className="text-lg">{activePuzzle.question}</p>
                             {hintsUsed > 0 && <p className="mt-4 text-cyan-400">Intel: {activePuzzle.hint}</p>}
@@ -571,9 +550,6 @@ const PuzzleAppComponent = () => {
             );
         }
 
-        const locations = ["Laboratory", "Operating Room", "Patient Room", "Decontamination Room", "Hazardous Waste", "Security Office"];
-        const difficultiesOrder = { Easy: 1, Medium: 2, Hard: 3 };
-
         const getDifficultyColor = (difficulty) => {
             if (difficulty === 'Easy') return 'bg-green-700/50 hover:bg-green-600/50';
             if (difficulty === 'Medium') return 'bg-yellow-700/50 hover:bg-yellow-600/50';
@@ -585,39 +561,38 @@ const PuzzleAppComponent = () => {
             <div className="flex flex-col h-full">
                 <LoggedInHeader />
                 {message && <p className="mb-2 text-sm text-center text-yellow-400">{message}</p>}
-                <div className="flex-grow pr-2 overflow-y-auto space-y-3">
-                    {locations.map(location => (
-                        <div key={location}>
-                            <h3 className="mb-1 text-sm font-bold text-sky-400">{location}</h3>
-                            <div className="grid grid-cols-3 gap-2">
-                                {Object.entries(puzzles)
-                                    .filter(([, p]) => p.location === location)
-                                    .sort(([, a], [, b]) => difficultiesOrder[a.difficulty] - difficultiesOrder[b.difficulty])
-                                    .map(([id, puzzle]) => {
-                                        const isCompleted = id in currentUser.completedPuzzles;
-                                        const reservationStatus = puzzleStatuses[id];
-                                        const isReservedByOther = reservationStatus && reservationStatus.reservedBy && reservationStatus.reservedBy !== currentUser.name;
-                                        const isDisabled = isCompleted || isReservedByOther || currentUser.reservedPuzzleId;
+                <div className="flex-grow space-y-2">
+                    {['Easy', 'Medium', 'Hard'].map(difficulty => (
+                        <div key={difficulty}>
+                            <h3 className="mb-1 text-sm font-bold text-sky-400">{difficulty} Assignments</h3>
+                            <div className="grid grid-cols-3 gap-1">
+                                {Object.entries(puzzles).filter(([, p]) => p.difficulty === difficulty).map(([id, puzzle]) => {
+                                    const isCompleted = id in currentUser.completedPuzzles;
+                                    const reservationStatus = puzzleStatuses[id];
+                                    const isReservedByOther = reservationStatus && reservationStatus.reservedBy && reservationStatus.reservedBy !== currentUser.name;
+                                    const isDisabled = isCompleted || isReservedByOther || currentUser.reservedPuzzleId;
 
-                                        let buttonClass;
-                                        if (isCompleted) {
-                                            buttonClass = 'bg-green-900/50';
-                                        } else if (isDisabled) {
-                                            buttonClass = 'bg-slate-800/30 text-slate-500';
-                                        } else {
-                                            buttonClass = getDifficultyColor(puzzle.difficulty);
-                                        }
-                                        
-                                        return (
-                                            <button 
-                                                key={id} 
-                                                onClick={() => handlePuzzleSelect(id)} 
-                                                disabled={isDisabled} 
-                                                className={`relative flex flex-col items-center justify-center p-1 text-center text-white transition-colors rounded-lg ${buttonClass} disabled:cursor-not-allowed overflow-hidden h-20`}
-                                            >
-                                                {isCompleted ? (
-                                                    <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                                ) : (
+                                    let buttonClass;
+                                    if (isCompleted) {
+                                        buttonClass = 'bg-green-900/50';
+                                    } else if (isDisabled) {
+                                        buttonClass = 'bg-slate-800/30 text-slate-500';
+                                    } else {
+                                        buttonClass = getDifficultyColor(puzzle.difficulty);
+                                    }
+                                    
+                                    return (
+                                        <button 
+                                            key={id} 
+                                            onClick={() => handlePuzzleSelect(id)} 
+                                            disabled={isDisabled} 
+                                            className={`relative flex flex-col items-center justify-center px-1 py-0.5 text-center text-white transition-colors rounded-lg ${buttonClass} disabled:cursor-not-allowed overflow-hidden h-16`}
+                                        >
+                                             {isCompleted ? (
+                                                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                            ) : (
+                                                <>
+                                                    {loadingPuzzleId === id ? <Spinner /> :
                                                     <>
                                                         {isReservedByOther && (
                                                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -627,13 +602,15 @@ const PuzzleAppComponent = () => {
                                                             </div>
                                                         )}
                                                         <div className={`flex flex-col transition-opacity ${isReservedByOther ? 'opacity-30' : ''}`}>
-                                                             <span className="text-xs font-bold uppercase text-slate-400">{puzzle.difficulty}</span>
+                                                             <span className="text-xs font-bold uppercase text-slate-400">{puzzle.location}</span>
                                                              <span className="text-lg font-bold text-yellow-400">{puzzle.points} PTS</span>
                                                         </div>
                                                     </>
-                                                )}
-                                            </button>
-                                        );
+                                                    }
+                                                </>
+                                            )}
+                                        </button>
+                                    );
                                 })}
                             </div>
                         </div>
@@ -644,9 +621,11 @@ const PuzzleAppComponent = () => {
     };
 
     return (
-        <div className="flex flex-col h-full p-4 text-slate-200 border bg-slate-900 border-slate-700">
-            <h2 className="flex-shrink-0 pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">SECURE CDC TERMINAL</h2>
-            <div className="flex-grow pr-2">
+        <div className="flex flex-col h-full bg-slate-900/70">
+            <div className="flex-shrink-0 p-4 border-b border-sky-400/30">
+                <h2 className="text-base font-bold text-sky-400">SECURE CDC TERMINAL</h2>
+            </div>
+            <div className="flex-grow p-4 overflow-y-auto">
                 {renderContent()}
             </div>
         </div>
@@ -656,17 +635,58 @@ const PuzzleAppComponent = () => {
 // --- Main App Component ---
 
 export default function App() {
+    const [db, setDb] = useState(null);
+    const [isAuthReady, setIsAuthReady] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+
+    // --- Firebase Initialization ---
+    useEffect(() => {
+        const initializeFirebase = async () => {
+            try {
+                const firebaseConfig = realFirebaseConfig: null;
+                if (!firebaseConfig) { 
+                    console.error("Firebase config not found. Please ensure the environment variables are set.");
+                    return; 
+                }
+                const app = initializeApp(firebaseConfig);
+                const firestore = getFirestore(app);
+                const authInstance = getAuth(app);
+                setDb(firestore);
+                setLogLevel('debug');
+                
+                onAuthStateChanged(authInstance, async (user) => {
+                    if (!user) {
+                        try {
+                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (token) { 
+                                await signInWithCustomToken(authInstance, token); 
+                            } else { 
+                                await signInAnonymously(authInstance); 
+                            }
+                        } catch (authError) {
+                            console.error("Firebase Auth Error:", authError);
+                        }
+                    }
+                    setIsAuthReady(true);
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+            }
+        };
+        initializeFirebase();
+    }, []);
+
     const initialCountryData = useMemo(() => [
-        { name: "United States", flag: "🇺🇸", infected: 425384192, deaths: 106192843 },
-        { name: "India", flag: "🇮🇳", infected: 215721834, deaths: 53912477 },
-        { name: "Brazil", flag: "🇧🇷", infected: 155109283, deaths: 38945102 },
-        { name: "France", flag: "🇫🇷", infected: 150058219, deaths: 37512993 },
-        { name: "Germany", flag: "🇩🇪", infected: 135873401, deaths: 33991284 },
-        { name: "United Kingdom", flag: "🇬🇧", infected: 110432188, deaths: 27601923 },
-        { name: "Russia", flag: "🇷🇺", infected: 90123456, deaths: 22598741 },
-        { name: "South Korea", flag: "🇰🇷", infected: 89987654, deaths: 22487192 },
-        { name: "Italy", flag: "🇮🇹", infected: 85321987, deaths: 21330182 },
-        { name: "Japan", flag: "🇯🇵", infected: 45019876, deaths: 11255432 }
+        { name: "United States", code: "us", infected: 425384192, deaths: 106192843 },
+        { name: "India", code: "in", infected: 215721834, deaths: 53912477 },
+        { name: "Brazil", code: "br", infected: 155109283, deaths: 38945102 },
+        { name: "France", code: "fr", infected: 150058219, deaths: 37512993 },
+        { name: "Germany", code: "de", infected: 135873401, deaths: 33991284 },
+        { name: "United Kingdom", code: "gb", infected: 110432188, deaths: 27601923 },
+        { name: "Russia", code: "ru", infected: 90123456, deaths: 22598741 },
+        { name: "South Korea", code: "kr", infected: 89987654, deaths: 22487192 },
+        { name: "Italy", code: "it", infected: 85321987, deaths: 21330182 },
+        { name: "Japan", code: "jp", infected: 45019876, deaths: 11255432 }
     ], []);
 
     const tickerMessagesPool = useMemo(() => [
@@ -732,21 +752,35 @@ export default function App() {
     const getTickerTypeColor = (type) => ({ 'HOTSPOT': 'text-red-400', 'MUTATION': 'text-yellow-400', 'VACCINE': 'text-blue-400' }[type] || 'text-slate-300');
     
     return (
-         <div className="p-2 font-sans text-slate-200 min-h-screen sm:p-4 bg-slate-800">
-            <div className="w-full max-w-screen-2xl mx-auto">
+        <div 
+            className="relative p-2 font-sans text-slate-200 min-h-screen sm:p-4"
+            style={{
+                backgroundImage: `url('https://news.stanford.edu/__data/assets/image/0021/52077/varieties/555w.jpeg')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed',
+            }}
+        >
+            <div className="absolute inset-0 bg-slate-900/60 z-0"></div>
+            <div className="relative z-10 w-full max-w-screen-2xl mx-auto">
                 <header className="flex items-center justify-between mb-4 text-white">
                     <h1 className="text-2xl font-bold md:text-3xl">CORONAVIRUS RESOURCE CENTER</h1>
                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/US_CDC_logo.svg/2560px-US_CDC_logo.svg.png" alt="CDC Logo" className="h-8"/>
                 </header>
 
                 <main className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900 h-[60vh] lg:h-[80vh]">
+                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900/70 h-[80vh]">
                         <h2 className="pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Confirmed Cases by Country</h2>
-                        <div className="flex-grow pr-2 overflow-y-auto space-y-4">
+                        <div className="flex-grow pr-2 -mr-2 overflow-y-auto space-y-4">
                             {countryData.map(country => (
-                                <div key={country.name} className="p-2 text-sm bg-slate-800/50">
+                                <div 
+                                    key={country.name} 
+                                    className="p-2 text-sm rounded-lg bg-cover bg-center"
+                                    style={{
+                                        backgroundImage: `linear-gradient(rgba(30, 41, 59, 0.7), rgba(30, 41, 59, 0.7)), url('https://flagcdn.com/w320/${country.code}.png')`
+                                    }}
+                                >
                                      <div className="flex items-center mb-2">
-                                        <span className="mr-2 text-lg">{country.flag}</span>
                                         <span className="font-semibold truncate">{country.name}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -764,11 +798,20 @@ export default function App() {
                         </div>
                     </aside>
 
-                    <section className="lg:col-span-6 h-[60vh] lg:h-[80vh]">
-                        <PuzzleAppComponent />
+                    <section className="lg:col-span-6 h-[80vh]">
+                       <div className="flex flex-col h-full gap-4">
+                           <div className="flex-grow">
+                               <PuzzleAppComponent db={db} isAuthReady={isAuthReady} currentUser={currentUser} setCurrentUser={setCurrentUser} />
+                           </div>
+                           {!currentUser && isAuthReady &&
+                               <div className="flex-shrink-0 h-1/3">
+                                   <Leaderboard db={db} isAuthReady={isAuthReady} />
+                               </div>
+                           }
+                       </div>
                     </section>
-
-                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900 h-[60vh] lg:h-[80vh]">
+                    
+                    <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900/70 h-[80vh]">
                         <div className="flex-shrink-0">
                             <h2 className="pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Global Status</h2>
                             <div className="mb-4 text-center">
@@ -783,7 +826,7 @@ export default function App() {
                         
                         <div className="flex flex-col flex-grow mt-6 overflow-hidden">
                             <h2 className="flex-shrink-0 pb-2 mb-4 text-base font-bold border-b text-sky-400 border-sky-400/30">Critical Updates</h2>
-                            <div className="flex-grow pr-2 overflow-y-auto space-y-3">
+                            <div className="flex-grow pr-2 -mr-2 overflow-y-auto space-y-3">
                                 {tickerFeed.map((item, index) => (
                                     <button 
                                         key={index} 
@@ -799,7 +842,7 @@ export default function App() {
                     </aside>
                 </main>
             </div>
-            <UpdateModal update={selectedUpdate} onClose={() => setSelectedUpdate(null)} />
+            {selectedUpdate && <UpdateModal update={selectedUpdate} onClose={() => setSelectedUpdate(null)} />}
         </div>
     );
 }

@@ -643,7 +643,7 @@ export default function App() {
     useEffect(() => {
         const initializeFirebase = async () => {
             try {
-                const firebaseConfig = realFirebaseConfig: null;
+                const firebaseConfig = realFirebaseConfig;
                 if (!firebaseConfig) { 
                     console.error("Firebase config not found. Please ensure the environment variables are set.");
                     return; 

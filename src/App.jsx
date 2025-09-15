@@ -24,13 +24,14 @@ const realFirebaseConfig = {
 
 // END DONT DELETE ME
 
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, setLogLevel, runTransaction, writeBatch } from 'firebase/firestore';
 
-const getPlayersCollectionPath = (appId) => `artifacts/${appId}/players`;
-const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/puzzles`;
+const getPlayersCollectionPath = (appId) => `artifacts/${appId}/public/data/players`;
+const getPuzzlesCollectionPath = (appId) => `artifacts/${appId}/public/data/puzzles`;
 
 // --- Helper Components & Functions ---
 
@@ -630,7 +631,7 @@ export default function App() {
     useEffect(() => {
         const initializeFirebase = async () => {
             try {
-                // const firebaseConfig = realFirebaseConfig;
+               const firebaseConfig = realFirebaseConfig;
                 if (!firebaseConfig) { 
                     console.error("Firebase config not found. Please ensure the environment variables are set.");
                     return; 
@@ -833,4 +834,5 @@ export default function App() {
         </div>
     );
 }
+
 

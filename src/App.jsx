@@ -121,7 +121,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
     }, [db, isAuthReady]);
 
     return (
-        <div className="flex flex-col h-full p-4 text-slate-200 bg-slate-900/70">
+        <>
             <h3 className="flex-shrink-0 pb-2 mb-2 text-base font-bold text-sky-400 border-b border-sky-400/30">Current Vaccine Efficacy</h3>
             <div className="flex-grow pr-2 -mr-2 overflow-y-auto space-y-2">
                 {players.map(player => {
@@ -139,7 +139,7 @@ const Leaderboard = ({ db, isAuthReady }) => {
                     );
                 })}
             </div>
-        </div>
+        </>
     );
 };
 
@@ -236,7 +236,6 @@ const QrLoginComponent = ({ onLogin }) => {
                 <div className="absolute inset-0 border-4 border-red-500/50"></div>
                  {!scanError && <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white text-xs bg-black/50 px-2 py-1">Scanning for Agent ID...</p>}
             </div>
-             {scanError && <p className="text-red-500 text-center text-sm mt-4">{scanError}</p>}
         </div>
     );
 };
@@ -244,13 +243,11 @@ const QrLoginComponent = ({ onLogin }) => {
 
 const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) => {
     // App state
-    const [usernameInput, setUsernameInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [loadingPuzzleId, setLoadingPuzzleId] = useState(null);
     const [message, setMessage] = useState('');
     const [puzzleStatuses, setPuzzleStatuses] = useState({});
-    const [loginMode, setLoginMode] = useState('text');
     
     // Puzzle state
     const [puzzleAnswer, setPuzzleAnswer] = useState('');
@@ -342,13 +339,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
             setMessage("Error: Could not access secure database.");
         } finally {
             setIsActionLoading(false);
-            setUsernameInput('');
         }
-    };
-    
-    const handleTextLoginSubmit = (e) => {
-        e.preventDefault();
-        handleLogin(usernameInput);
     };
     
     const handlePuzzleSelect = async (puzzleId) => {
@@ -481,26 +472,16 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
 
         if (!currentUser) {
             return (
-                 <div className="flex flex-col items-center justify-center h-full">
-                     <div className="flex gap-2 mb-4">
-                        <button onClick={() => setLoginMode('text')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'text' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Use Codename</button>
-                        <button onClick={() => setLoginMode('qr')} className={`py-2 px-4 text-sm font-bold ${loginMode === 'qr' ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-300'}`}>Scan ID</button>
-                    </div>
-
-                    {loginMode === 'text' ? (
-                        <form onSubmit={handleTextLoginSubmit} className="flex flex-col gap-4 items-center w-full">
-                            <p className="text-center text-base">Agent Login</p>
-                            <input type="text" placeholder="Enter Codename" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="bg-slate-800 border border-slate-600 rounded-none p-2 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                            <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 w-full max-w-xs transition-colors" disabled={isActionLoading}>
-                                {isActionLoading ? <Spinner/> : 'Access Terminal'}
-                            </button>
-                        </form>
-                    ) : (
+                 <div className="flex flex-col h-full">
+                     <div className="flex-shrink-0 flex flex-col items-center">
+                        <p className="text-center text-base mb-2">Scan Agent ID</p>
                         <QrLoginComponent onLogin={handleLogin} />
-                    )}
-                    
-                    {message && <p className="mt-4 text-sm text-center text-yellow-400">{message}</p>}
-                </div>
+                        {message && <p className="mt-4 text-sm text-center text-yellow-400">{message}</p>}
+                     </div>
+                     <div className="flex flex-col flex-grow pt-4">
+                        <Leaderboard db={db} isAuthReady={isAuthReady} />
+                    </div>
+                 </div>
             );
         }
         
@@ -515,10 +496,10 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
                         <div className="flex-grow">
                             <h3 className="text-xl font-bold text-slate-100">{activePuzzle.title}</h3>
                              <div className="flex gap-4 text-sm text-slate-400 mt-1 border-b border-slate-700 pb-2 mb-4">
-                                <span>Location: <span className="font-semibold text-slate-300">{activePuzzle.location}</span></span>
-                                <span>Difficulty: <span className="font-semibold text-slate-300">{activePuzzle.difficulty}</span></span>
-                                <span>Value: <span className="font-semibold text-yellow-400">{activePuzzle.points - hintsUsed} pts</span></span>
-                            </div>
+                                 <span>Location: <span className="font-semibold text-slate-300">{activePuzzle.location}</span></span>
+                                 <span>Difficulty: <span className="font-semibold text-slate-300">{activePuzzle.difficulty}</span></span>
+                                 <span>Value: <span className="font-semibold text-yellow-400">{activePuzzle.points - hintsUsed} pts</span></span>
+                             </div>
                             <p className="text-lg">{activePuzzle.question}</p>
                             {hintsUsed > 0 && <p className="mt-4 text-cyan-400">Intel: {activePuzzle.hint}</p>}
                         </div>
@@ -574,7 +555,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
                                             disabled={isDisabled} 
                                             className={`relative flex flex-col items-center justify-center px-1 py-0.5 text-center text-white transition-colors rounded-lg ${buttonClass} disabled:cursor-not-allowed overflow-hidden h-16`}
                                         >
-                                             {isCompleted ? (
+                                            {isCompleted ? (
                                                 <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                             ) : (
                                                 <>
@@ -607,7 +588,12 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900/70">
+        <div
+            className="flex flex-col h-full bg-cover bg-center"
+            style={{
+                backgroundImage: `linear-gradient(rgba(30, 41, 59, 0.85), rgba(30, 41, 59, 0.85)), url('https://www.vircan.ca/wp-content/uploads/2016/09/CDC.png')`
+            }}
+        >
             <div className="flex-shrink-0 p-4 border-b border-sky-400/30">
                 <h2 className="text-base font-bold text-sky-400">SECURE CDC TERMINAL</h2>
             </div>
@@ -750,8 +736,7 @@ export default function App() {
             <div className="absolute inset-0 bg-slate-900/60 z-0"></div>
             <div className="relative z-10 w-full max-w-screen-2xl mx-auto">
                 <header className="flex items-center justify-between mb-4 text-white">
-                    <h1 className="text-2xl font-bold md:text-3xl">CORONAVIRUS RESOURCE CENTER</h1>
-                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/US_CDC_logo.svg/2560px-US_CDC_logo.svg.png" alt="CDC Logo" className="h-8"/>
+                    <h1 className="text-2xl font-bold md:text-3xl">Project Chimera </h1>
                 </header>
 
                 <main className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -785,16 +770,7 @@ export default function App() {
                     </aside>
 
                     <section className="lg:col-span-6 h-[80vh]">
-                       <div className="flex flex-col h-full gap-4">
-                           <div className="flex-grow">
-                               <PuzzleAppComponent db={db} isAuthReady={isAuthReady} currentUser={currentUser} setCurrentUser={setCurrentUser} />
-                           </div>
-                           {!currentUser && isAuthReady &&
-                               <div className="flex-shrink-0 h-1/3">
-                                   <Leaderboard db={db} isAuthReady={isAuthReady} />
-                               </div>
-                           }
-                       </div>
+                       <PuzzleAppComponent db={db} isAuthReady={isAuthReady} currentUser={currentUser} setCurrentUser={setCurrentUser} />
                     </section>
                     
                     <aside className="flex flex-col p-4 lg:col-span-3 bg-slate-900/70 h-[80vh]">

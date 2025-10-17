@@ -247,7 +247,6 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [loadingPuzzleId, setLoadingPuzzleId] = useState(null);
     const [message, setMessage] = useState('');
-    const [puzzleStatuses, setPuzzleStatuses] = useState({});
     
     // Puzzle state
     const [puzzleAnswer, setPuzzleAnswer] = useState('');
@@ -265,22 +264,6 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
             setLoading(false);
         }
     },[isAuthReady]);
-
-
-    // --- Puzzle Status Listener ---
-    useEffect(() => {
-        if (!db || !isAuthReady) return;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const puzzlesRef = collection(db, getPuzzlesCollectionPath(appId));
-        const unsubscribe = onSnapshot(puzzlesRef, (snapshot) => {
-            const statuses = {};
-            snapshot.docs.forEach(doc => {
-                statuses[doc.id] = doc.data();
-            });
-            setPuzzleStatuses(statuses);
-        });
-        return () => unsubscribe();
-    }, [db, isAuthReady]);
 
     const handleLogout = () => {
         setCurrentUser(null);
@@ -311,7 +294,15 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
         };
     }, [currentUser]);
 
-    const formatUsername = (name) => name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
+    const formatUsername = (name) => {
+        if (!name) return '';
+        return name
+            .trim()
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
 
     const handleLogin = async (username) => {
         if (!username.trim() || !db) return;
@@ -322,17 +313,22 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
             const userRef = doc(db, getPlayersCollectionPath(appId), formattedUsername);
             const userSnap = await getDoc(userRef);
             
-            let userData;
+            let userDataFromDb;
             if (userSnap.exists()) {
-                userData = userSnap.data();
+                userDataFromDb = userSnap.data();
+                 // Ensure name is correctly formatted even for existing users
+                if(userDataFromDb.name !== formattedUsername){
+                    userDataFromDb.name = formattedUsername;
+                    await setDoc(userRef, userDataFromDb, {merge: true});
+                }
                 setMessage(`Welcome back, Agent ${formattedUsername}.`);
             } else {
-                userData = { name: formattedUsername, score: 0, completedPuzzles: {}, reservedPuzzleId: null };
-                await setDoc(userRef, userData);
+                userDataFromDb = { name: formattedUsername, score: 0, completedPuzzles: {} };
+                await setDoc(userRef, userDataFromDb);
                 setMessage(`Identity confirmed. Welcome, Agent ${formattedUsername}.`);
             }
 
-            setCurrentUser(userData);
+            setCurrentUser({ ...userDataFromDb, activePuzzleId: null });
 
         } catch (error) {
             console.error("Error logging in:", error);
@@ -342,67 +338,25 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
         }
     };
     
-    const handlePuzzleSelect = async (puzzleId) => {
-        if (!db || !currentUser || currentUser.reservedPuzzleId) return;
-
-        if (puzzleStatuses[puzzleId]?.reservedBy) {
-            setMessage("Assignment is currently locked by another agent.");
-            return;
-        }
-        setLoadingPuzzleId(puzzleId);
-        try {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), puzzleId);
-            const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
-
-            await runTransaction(db, async (transaction) => {
-                const puzzleDoc = await transaction.get(puzzleRef);
-                const puzzleData = puzzleDoc.data() || {};
-
-                if (puzzleData.reservedBy) {
-                    throw new Error("This puzzle is already reserved by another agent.");
-                }
-
-                transaction.set(puzzleRef, { reservedBy: currentUser.name }, { merge: true });
-                transaction.update(playerRef, { reservedPuzzleId: puzzleId });
-            });
-
-            const updatedUser = { ...currentUser, reservedPuzzleId: puzzleId };
-            setCurrentUser(updatedUser);
-
-        } catch (error) {
-            console.error("Error reserving puzzle:", error);
-            setMessage(error.message || "Failed to reserve assignment. It may have been taken.");
-        } finally {
-            setLoadingPuzzleId(null);
-        }
+    const handlePuzzleSelect = (puzzleId) => {
+        if (!currentUser || currentUser.activePuzzleId) return;
+        const updatedUser = { ...currentUser, activePuzzleId: puzzleId };
+        setCurrentUser(updatedUser);
+        setMessage('');
     };
     
-    const handleGiveUp = async () => {
-        if (!db || !currentUser || !currentUser.reservedPuzzleId) return;
-        const puzzleId = currentUser.reservedPuzzleId;
-        try {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), puzzleId);
-            const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
-            
-            const batch = writeBatch(db);
-            batch.update(puzzleRef, { reservedBy: null });
-            batch.update(playerRef, { reservedPuzzleId: null });
-            await batch.commit();
-
-            const updatedUser = { ...currentUser, reservedPuzzleId: null };
-            setCurrentUser(updatedUser);
-            setMessage("Assignment aborted. Select a new assignment.");
-        } catch (error) {
-            console.error("Error giving up puzzle:", error);
-            setMessage("Error releasing assignment. Please try again.");
-        }
+    const handleReturnToSelection = () => {
+        if (!currentUser) return;
+        const updatedUser = { ...currentUser, activePuzzleId: null };
+        setCurrentUser(updatedUser);
+        setPuzzleAnswer('');
+        setHintsUsed(0);
+        setMessage("Assignment selection re-enabled.");
     };
 
     const handlePuzzleSubmit = async (e) => {
         e.preventDefault();
-        const activePuzzleId = currentUser?.reservedPuzzleId;
+        const activePuzzleId = currentUser?.activePuzzleId;
         const activePuzzle = activePuzzleId ? puzzles[activePuzzleId] : null;
 
         if (!puzzleAnswer.trim() || !currentUser || !activePuzzle) return;
@@ -412,23 +366,20 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
             const newScore = currentUser.score + pointsAwarded;
             
             const updatedUser = { 
-                ...currentUser, 
+                name: currentUser.name,
                 score: newScore, 
                 completedPuzzles: { ...currentUser.completedPuzzles, [activePuzzleId]: pointsAwarded },
-                reservedPuzzleId: null 
             };
+
+            const updatedUserWithActivePuzzle = {...updatedUser, activePuzzleId: null};
 
             try {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const playerRef = doc(db, getPlayersCollectionPath(appId), currentUser.name);
-                const puzzleRef = doc(db, getPuzzlesCollectionPath(appId), activePuzzleId);
                 
-                const batch = writeBatch(db);
-                batch.update(puzzleRef, { reservedBy: null });
-                batch.set(playerRef, updatedUser);
-                await batch.commit();
+                await setDoc(playerRef, updatedUser);
                 
-                setCurrentUser(updatedUser);
+                setCurrentUser(updatedUserWithActivePuzzle);
                 setMessage(`Correct. ${pointsAwarded} points awarded.`);
             } catch (error) {
                 console.error("Error updating score:", error);
@@ -485,7 +436,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
             );
         }
         
-        const activePuzzleId = currentUser.reservedPuzzleId;
+        const activePuzzleId = currentUser.activePuzzleId;
         const activePuzzle = activePuzzleId ? puzzles[activePuzzleId] : null;
 
         if (activePuzzle) {
@@ -510,7 +461,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
                         </form>
                         <div className="flex gap-2">
                             <button onClick={() => setHintsUsed(prev => prev + 1)} disabled={hintsUsed > 0} className="px-4 py-2 text-sm font-bold text-white transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500">Request Intel (-1 Pt)</button>
-                            <button onClick={handleGiveUp} className="px-4 py-2 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Abort Assignment</button>
+                            <button onClick={handleReturnToSelection} className="px-4 py-2 text-sm font-bold text-white transition-colors bg-slate-600 hover:bg-slate-700">Return to Selection</button>
                         </div>
                     </div>
                 </div>
@@ -535,9 +486,7 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
                             <div className="grid grid-cols-3 gap-1">
                                 {Object.entries(puzzles).filter(([, p]) => p.difficulty === difficulty).map(([id, puzzle]) => {
                                     const isCompleted = id in currentUser.completedPuzzles;
-                                    const reservationStatus = puzzleStatuses[id];
-                                    const isReservedByOther = reservationStatus && reservationStatus.reservedBy && reservationStatus.reservedBy !== currentUser.name;
-                                    const isDisabled = isCompleted || isReservedByOther || currentUser.reservedPuzzleId;
+                                    const isDisabled = isCompleted || currentUser.activePuzzleId;
 
                                     let buttonClass;
                                     if (isCompleted) {
@@ -560,19 +509,10 @@ const PuzzleAppComponent = ({ db, isAuthReady, currentUser, setCurrentUser }) =>
                                             ) : (
                                                 <>
                                                     {loadingPuzzleId === id ? <Spinner /> :
-                                                    <>
-                                                        {isReservedByOther && (
-                                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                                <span className="text-xl font-black transform -rotate-12 select-none text-slate-500/40">
-                                                                    {reservationStatus.reservedBy}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        <div className={`flex flex-col transition-opacity ${isReservedByOther ? 'opacity-30' : ''}`}>
+                                                        <div className="flex flex-col">
                                                              <span className="text-xs font-bold uppercase text-slate-400">{puzzle.location}</span>
                                                              <span className="text-lg font-bold text-yellow-400">{puzzle.points} PTS</span>
                                                         </div>
-                                                    </>
                                                     }
                                                 </>
                                             )}
@@ -808,5 +748,4 @@ export default function App() {
         </div>
     );
 }
-
 

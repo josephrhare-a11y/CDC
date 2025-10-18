@@ -142,7 +142,7 @@ const puzzles = {
 
     // Easy Clues (5 Points)
 
-    'easy-lab': { title: "TR1T0N", question: "_ _ _ _ _ _ ", answer: "PLAGUE", hint: "You're looking for 6 shapes and letters. What do the letters spell?", points: 10, difficulty: "Easy", location: "TR1T0N" },
+    'easy-lab': { title: "TR1T0N", question: "_ _ _ _ _ _ ", answer: "plague", hint: "You're looking for 6 shapes and letters. What do the letters spell?", points: 10, difficulty: "Easy", location: "TR1T0N" },
 
     'easy-or': { title: "P3R3S3PH0N3", question: "_ _ _ _ _ _ _", answer: "3208132", hint: "When you stand on the foot prints, can you see anything down the hall. The Patient Door should be closed..", points: 10, difficulty: "Easy", location: "P3R3S3PH0N3" },
 

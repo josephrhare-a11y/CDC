@@ -162,7 +162,7 @@ const puzzles = {
 
     'medium-or': { title: "3R3BUS", question: "_ _ _ _ _", answer: "death", hint: "If you put your head where the patient is and look through the glass, you should see 3 cards. In the lab, can you use anything to reveal the answer?", points: 10, difficulty: "Medium", location: "3R3BUS" },
 
-    'medium-patient': { title: "TYCH3", question: "_ _ _ _ _ _", answer: "a+5G56", hint: "Find what bloodtype is missing. Locate the number associated with the color. Find the Blood Sample in the test room.", points: 10, difficulty: "Medium", location: "TYCH3" },
+    'medium-patient': { title: "TYCH3", question: "_ _ _ _ _ _", answer: "a+5g56", hint: "Find what bloodtype is missing. Locate the number associated with the color. Find the Blood Sample in the test room.", points: 10, difficulty: "Medium", location: "TYCH3" },
 
     'medium-decon': { title: "3R03", question: "_ _ _ _", answer: "mrsa", hint: "Process of elimination will guide you to only 1 of the 6 viruses.", points: 10, difficulty: "Medium", location: "3R03" },
 

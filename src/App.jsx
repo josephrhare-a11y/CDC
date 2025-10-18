@@ -150,7 +150,7 @@ const puzzles = {
 
     'easy-decon': { title: "AMPH1TR1T3", question: "_ _ _ _", answer: "2200", hint: "Have you followed the lines from each of the three vats? The vials they end at will add for your answer.", points: 10, difficulty: "Easy", location: "AMPH1TR1T3" },
 
-    'easy-waste': { title: "S3L3n3", question: "_ _ _ - _ _ _", answer: "rhx-495", hint: "Find the small petri dishes in the fridge, match their pattern with the circles on the shelf. Once placed on the board you should see a message.", points: 10, difficulty: "Easy", location: "S3L3n3" },
+    'easy-waste': { title: "S3L3n3", question: "_ _ _ - _ _ _", answer: "rhx495", hint: "Find the small petri dishes in the fridge, match their pattern with the circles on the shelf. Once placed on the board you should see a message.", points: 10, difficulty: "Easy", location: "S3L3n3" },
 
     'easy-security': { title: "H3L10S", question: "_ _ _ _ _ _", answer: "helios", hint: "Find the mice with the mentioned symptoms. Put the letters in order.", points: 10, difficulty: "Easy", location: "H3L10S" },
 

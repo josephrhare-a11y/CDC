@@ -150,9 +150,9 @@ const puzzles = {
 
     'easy-decon': { title: "AMPH1TR1T3", question: "_ _ _ _", answer: "2200", hint: "Have you followed the lines from each of the three vats? The vials they end at will add for your answer.", points: 10, difficulty: "Easy", location: "AMPH1TR1T3" },
 
-    'easy-waste': { title: "S3L3n3", question: "_ _ _ - _ _ _", answer: "RHX-495", hint: "Find the small petri dishes in the fridge, match their pattern with the circles on the shelf. Once placed on the board you should see a message.", points: 10, difficulty: "Easy", location: "S3L3n3" },
+    'easy-waste': { title: "S3L3n3", question: "_ _ _ - _ _ _", answer: "rhx-495", hint: "Find the small petri dishes in the fridge, match their pattern with the circles on the shelf. Once placed on the board you should see a message.", points: 10, difficulty: "Easy", location: "S3L3n3" },
 
-    'easy-security': { title: "H3L10S", question: "_ _ _ _ _ _", answer: "HELIOS", hint: "Find the mice with the mentioned symptoms. Put the letters in order.", points: 10, difficulty: "Easy", location: "H3L10S" },
+    'easy-security': { title: "H3L10S", question: "_ _ _ _ _ _", answer: "helios", hint: "Find the mice with the mentioned symptoms. Put the letters in order.", points: 10, difficulty: "Easy", location: "H3L10S" },
 
 
 
@@ -160,15 +160,15 @@ const puzzles = {
 
     'medium-lab': { title: "HYPN05", question: "_ _ _ _", answer: "5132", hint: "The black light will show you the vials that you need to use. Put them on the grid to reveal the answer.", points: 10, difficulty: "Medium", location: "HYPN05" },
 
-    'medium-or': { title: "3R3BUS", question: "_ _ _ _ _", answer: "DEATH", hint: "If you put your head where the patient is and look through the glass, you should see 3 cards. In the lab, can you use anything to reveal the answer?", points: 10, difficulty: "Medium", location: "3R3BUS" },
+    'medium-or': { title: "3R3BUS", question: "_ _ _ _ _", answer: "death", hint: "If you put your head where the patient is and look through the glass, you should see 3 cards. In the lab, can you use anything to reveal the answer?", points: 10, difficulty: "Medium", location: "3R3BUS" },
 
-    'medium-patient': { title: "TYCH3", question: "_ _ _ _ _ _", answer: "A+5G56", hint: "Find what bloodtype is missing. Locate the number associated with the color. Find the Blood Sample in the test room.", points: 10, difficulty: "Medium", location: "TYCH3" },
+    'medium-patient': { title: "TYCH3", question: "_ _ _ _ _ _", answer: "a+5G56", hint: "Find what bloodtype is missing. Locate the number associated with the color. Find the Blood Sample in the test room.", points: 10, difficulty: "Medium", location: "TYCH3" },
 
-    'medium-decon': { title: "3R03", question: "_ _ _ _", answer: "MRSA", hint: "Process of elimination will guide you to only 1 of the 6 viruses.", points: 10, difficulty: "Medium", location: "3R03" },
+    'medium-decon': { title: "3R03", question: "_ _ _ _", answer: "mrsa", hint: "Process of elimination will guide you to only 1 of the 6 viruses.", points: 10, difficulty: "Medium", location: "3R03" },
 
-    'medium-waste': { title: "N3M3515", question: "_ _ _ _?", answer: "STAR", hint: "When the door is close, using the map - add the locations from the reports in their file order using the red string provided.", points: 10, difficulty: "Medium", location: "N3M3515" },
+    'medium-waste': { title: "N3M3515", question: "_ _ _ _?", answer: "star", hint: "When the door is close, using the map - add the locations from the reports in their file order using the red string provided.", points: 10, difficulty: "Medium", location: "N3M3515" },
 
-    'medium-security': { title: "H3C4T3", question: "_ _ _ _ _ _ _ _ _ _", answer: "QUARANTINE", hint: "The WHY refers to the NATO alphabet. Can you find these letters in the 10 clues. This will spell your answer in order of the story, not the file numbers.", points: 10, difficulty: "Medium", location: "H3C4T3" },
+    'medium-security': { title: "H3C4T3", question: "_ _ _ _ _ _ _ _ _ _", answer: "quarantine", hint: "The WHY refers to the NATO alphabet. Can you find these letters in the 10 clues. This will spell your answer in order of the story, not the file numbers.", points: 10, difficulty: "Medium", location: "H3C4T3" },
 
     
 

@@ -142,49 +142,49 @@ const puzzles = {
 
     // Easy Clues (5 Points)
 
-    'easy-lab': { title: "Basic Contamination", question: "What piece of lab equipment creates a sterile work environment by filtering air?", answer: "laminar flow hood", hint: "It provides a constant flow of clean air.", points: 5, difficulty: "Easy", location: "Laboratory" },
+    'easy-lab': { title: "TR1T0N", question: "_ _ _ _ _ _ ", answer: "PLAGUE", hint: "You're looking for 6 shapes and letters. What do the letters spell?", points: 10, difficulty: "Easy", location: "CDC" },
 
-    'easy-or': { title: "Surgical Tools", question: "What sharp instrument is used for making incisions during surgery?", answer: "scalpel", hint: "It's a small, extremely sharp blade.", points: 5, difficulty: "Easy", location: "Operating Room" },
+    'easy-or': { title: "P3R3S3PH0N3", question: "_ _ _ _ _ _ _", answer: "3208132", hint: "When you stand on the foot prints, can you see anything down the hall. The Patient Door should be closed..", points: 10, difficulty: "Easy", location: "CDC" },
 
-    'easy-patient': { title: "Vital Signs", question: "What is the common term for the device with an inflatable cuff used to measure a patient's blood pressure?", answer: "blood pressure cuff", hint: "The medical term is sphygmomanometer.", points: 5, difficulty: "Easy", location: "Patient Room" },
+    'easy-patient': { title: "TH4N4t05", question: "_ _ _ _", answer: "7294", hint: "Have you noticed the marks on the shower track? If you line up the door to those marks, do you see anything on the glass?.", points: 10, difficulty: "Easy", location: "CDC" },
 
-    'easy-decon': { title: "Neutralizing Agent", question: "What is the process of neutralizing or removing hazardous substances from an area or person?", answer: "decontamination", hint: "The name of the room itself is a clue.", points: 5, difficulty: "Easy", location: "Decontamination Room" },
+    'easy-decon': { title: "AMPH1TR1T3", question: "_ _ _ _", answer: "2200", hint: "Have you followed the lines from each of the three vats? The vials they end at will add for your answer.", points: 10, difficulty: "Easy", location: "CDC" },
 
-    'easy-waste': { title: "Biohazard Color", question: "What color is universally used for bags and containers holding biohazardous waste?", answer: "red", hint: "This color often signifies danger or warning.", points: 5, difficulty: "Easy", location: "Hazardous Waste" },
+    'easy-waste': { title: "S3L3n3", question: "_ _ _ - _ _ _", answer: "RHX-495", hint: "Find the small petri dishes in the fridge, match their pattern with the circles on the shelf. Once placed on the board you should see a message.", points: 10, difficulty: "Easy", location: "CDC" },
 
-    'easy-security': { title: "Agency Acronym", question: "What does the 'C' in 'CDC' stand for?", answer: "centers", hint: "The full name is Centers for Disease Control and Prevention.", points: 5, difficulty: "Easy", location: "Security Office" },
+    'easy-security': { title: "H3L10S", question: "_ _ _ _ _ _", answer: "HELIOS", hint: "Find the mice with the mentioned symptoms. Put the letters in order.", points: 10, difficulty: "Easy", location: "CDC" },
 
 
 
     // Medium Clues (10 Points)
 
-    'medium-lab': { title: "Genetic Amplification", question: "What technique is used to amplify a small sample of DNA into a larger, testable amount?", answer: "pcr", hint: "Its abbreviation stands for Polymerase Chain Reaction.", points: 10, difficulty: "Medium", location: "Laboratory" },
+    'medium-lab': { title: "HYPN05", question: "_ _ _ _", answer: "5132", hint: "The black light will show you the vials that you need to use. Put them on the grid to reveal the answer.", points: 10, difficulty: "Medium", location: "Laboratory" },
 
-    'medium-or': { title: "Maintaining Sterility", question: "What is the name of the machine that uses high-pressure steam to sterilize surgical equipment?", answer: "autoclave", hint: "It's essential for preventing post-surgical infections.", points: 10, difficulty: "Medium", location: "Operating Room" },
+    'medium-or': { title: "3R3BUS", question: "_ _ _ _ _", answer: "DEATH", hint: "If you put your head where the patient is and look through the glass, you should see 3 cards. In the lab, can you use anything to reveal the answer?", points: 10, difficulty: "Medium", location: "Operating Room" },
 
-    'medium-patient': { title: "Common Treatment", question: "A dehydrated patient is often given an IV drip containing what simple fluid?", answer: "saline", hint: "It's a solution of salt in sterile water.", points: 10, difficulty: "Medium", location: "Patient Room" },
+    'medium-patient': { title: "TYCH3", question: "_ _ _ _ _ _", answer: "A+5G56", hint: "Find what bloodtype is missing. Locate the number associated with the color. Find the Blood Sample in the test room.", points: 10, difficulty: "Medium", location: "Patient Room" },
 
-    'medium-decon': { title: "Safety Level", question: "What level of biosafety (BSL) is required for working with agents that pose a high risk of aerosol-transmitted infections?", answer: "bsl-4", hint: "It is the highest level of biocontainment.", points: 10, difficulty: "Medium", location: "Decontamination Room" },
+    'medium-decon': { title: "3R03", question: "_ _ _ _", answer: "MRSA", hint: "Process of elimination will guide you to only 1 of the 6 viruses.", points: 10, difficulty: "Medium", location: "Decontamination Room" },
 
-    'medium-waste': { title: "Sterilization Method", question: "What is the primary method for sterilizing and disposing of infectious medical waste to render it safe?", answer: "incineration", hint: "This process involves burning at very high temperatures.", points: 10, difficulty: "Medium", location: "Hazardous Waste" },
+    'medium-waste': { title: "N3M3515", question: "_ _ _ _?", answer: "STAR", hint: "When the door is close, using the map - add the locations from the reports in their file order using the red string provided.", points: 10, difficulty: "Medium", location: "Hazardous Waste" },
 
-    'medium-security': { title: "Isolation Protocol", question: "What is the term for the isolation of people or animals who have been exposed to a contagious disease?", answer: "quarantine", hint: "It's a key strategy to prevent further spread.", points: 10, difficulty: "Medium", location: "Security Office" },
+    'medium-security': { title: "H3C4T3", question: "_ _ _ _ _ _ _ _ _ _", answer: "QUARANTINE", hint: "The WHY refers to the NATO alphabet. Can you find these letters in the 10 clues. This will spell your answer in order of the story, not the file numbers.", points: 10, difficulty: "Medium", location: "Security Office" },
 
     
 
     // Hard Clues (20 Points)
 
-    'hard-lab': { title: "Virus Identification", question: "What laboratory method uses antibodies to detect the presence of a specific antigen in a patient's sample?", answer: "elisa", hint: "This test's abbreviation stands for enzyme-linked immunosorbent assay.", points: 20, difficulty: "Hard", location: "Laboratory" },
+   // 'hard-lab': { title: "Virus Identification", question: "What laboratory method uses antibodies to detect the presence of a specific antigen in a patient's sample?", answer: "elisa", hint: "This test's abbreviation stands for enzyme-linked immunosorbent assay.", points: 20, difficulty: "Hard", location: "Laboratory" },
 
-    'hard-or': { title: "Life Support", question: "What machine takes over the function of the heart and lungs during complex open-heart surgery?", answer: "heart-lung machine", hint: "Also known as a cardiopulmonary bypass machine.", points: 20, difficulty: "Hard", location: "Operating Room" },
+  //  'hard-or': { title: "Life Support", question: "What machine takes over the function of the heart and lungs during complex open-heart surgery?", answer: "heart-lung machine", hint: "Also known as a cardiopulmonary bypass machine.", points: 20, difficulty: "Hard", location: "Operating Room" },
 
-    'hard-patient': { title: "Symptom Analysis", question: "What is the medical term for the small, pinpoint red spots on the skin caused by minor bleeding, a key symptom of hemorrhagic fevers?", answer: "petechiae", hint: "This symptom indicates bleeding underneath the skin.", points: 20, difficulty: "Hard", location: "Patient Room" },
+   // 'hard-patient': { title: "Symptom Analysis", question: "What is the medical term for the small, pinpoint red spots on the skin caused by minor bleeding, a key symptom of hemorrhagic fevers?", answer: "petechiae", hint: "This symptom indicates bleeding underneath the skin.", points: 20, difficulty: "Hard", location: "Patient Room" },
 
-    'hard-decon': { title: "Gaseous Sterilant", question: "What chemical agent is often used in a gaseous state to sterilize entire rooms and sensitive equipment?", answer: "hydrogen peroxide vapor", hint: "It breaks down into water and oxygen, leaving no toxic residue.", points: 20, difficulty: "Hard", location: "Decontamination Room" },
+    //'hard-decon': { title: "Gaseous Sterilant", question: "What chemical agent is often used in a gaseous state to sterilize entire rooms and sensitive equipment?", answer: "hydrogen peroxide vapor", hint: "It breaks down into water and oxygen, leaving no toxic residue.", points: 20, difficulty: "Hard", location: "Decontamination Room" },
 
-    'hard-waste': { title: "Needle Disposal", question: "What type of puncture-resistant, sealed container is required for disposing of used needles and scalpels?", answer: "sharps container", hint: "The name describes exactly what it holds.", points: 20, difficulty: "Hard", location: "Hazardous Waste" },
+   // 'hard-waste': { title: "Needle Disposal", question: "What type of puncture-resistant, sealed container is required for disposing of used needles and scalpels?", answer: "sharps container", hint: "The name describes exactly what it holds.", points: 20, difficulty: "Hard", location: "Hazardous Waste" },
 
-    'hard-security': { title: "Epidemic Investigation", question: "In pandemic response, what is the term for tracing the contacts of an infected individual to identify others who may be exposed?", answer: "contact tracing", hint: "It's a fundamental public health strategy to control outbreaks.", points: 20, difficulty: "Hard", location: "Security Office" }
+   // 'hard-security': { title: "Epidemic Investigation", question: "In pandemic response, what is the term for tracing the contacts of an infected individual to identify others who may be exposed?", answer: "contact tracing", hint: "It's a fundamental public health strategy to control outbreaks.", points: 20, difficulty: "Hard", location: "Security Office" }
 
 };
 
